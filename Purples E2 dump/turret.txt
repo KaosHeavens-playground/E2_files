@@ -1,0 +1,9 @@
+@name turret
+interval(10)
+Me=owner()
+Chip=entity()
+
+if(first()) {holoCreate(1)}
+
+holoModel(1,"models/wot/russia/t-80/t80turret.mdl")
+holoPos(1,Chip:pos()+vec(0,0,25))

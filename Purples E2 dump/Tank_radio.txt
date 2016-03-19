@@ -1,0 +1,77 @@
+@name Tank_radio
+@outputs A B C D E [Vel_Old Vel G]:vector [Force Resistance Gravity Inertia]:vector2 Antena_vel
+@persist I [Dlt]:angle N Len Length Weight Resistance_coefficient Inertia_coefficient Inertia_length Acceleration Antena_vel
+
+
+if(first()){
+    Antena_Length = 70
+    Antena_Length = 50
+    N = 6
+    Weight = 2
+    Resistance_coefficient = 0.1 # More larger resistance
+    Inertia_coefficient = 0
+    E = 0.00
+    
+    Length = Antena_Length / N
+    
+    C = 1
+    holoCreate(1,entity():toWorld(vec(0,0,Length / 2):rotate(ang(0,0,0))),vec(0,0,0),entity():toWorld(ang(0,0,0)),vec(50,50,50),"cylinder") 
+    holoScaleUnits(1,vec(0.5,0.5,Length))
+    holoParent(1,entity())
+     
+    I = 2
+    while(I <= N){
+        holoCreate(I,holoEntity(I - 1):toWorld(vec(0,0,Length / 2) + vec(0,0,Length / 2):rotate(ang(0,0,0))),vec(0,0,0),holoEntity(I - 1):toWorld(ang(0,0,0)),vec(50,50,50),"cylinder") 
+        holoScaleUnits(I,vec(0.5,0.5,Length))
+        holoParent(I,I - 1)
+        I++
+    }
+}
+
+function number smooth(A:number,Smooth_Rate:number){
+    A -= A * Smooth_Rate
+    return A 
+} 
+
+function update_antenna(Frc:vector2){
+    local Pitch = 0
+    local Yaw = 0
+
+    Pitch = -atan(Frc:length()/(Length * N * C))
+    Yaw = vec2(Frc:x(),Frc:y()):toAngle()
+    Yaw = entity():toLocal(ang(0,Yaw,0)):yaw()
+    holoAng(1,entity():toWorld(ang(Pitch / N,Yaw,0)))
+    holoPos(1,entity():toWorld(vec(0,0,Length / 2):rotate(entity():toLocal(holoEntity(1):angles()))))
+    
+    I = 2
+    while(I <= N){
+    holoAng(I,holoEntity(I - 1):toWorld(ang(Pitch / N,0,0)))
+    holoPos(I,holoEntity(I - 1):toWorld(vec(0,0,Length / 2) + vec(0,0,Length / 2):rotate(holoEntity(I - 1):toLocal(holoEntity(I):angles()))))
+    I++
+}
+
+
+}
+interval(150)
+
+Vel_Old = Vel
+Vel = entity():vel()
+Acceleration = (Vel_Old - Vel):length()
+
+Resistance = vec2(entity():vel():x(),entity():vel():y()) * Resistance_coefficient
+Gravity = -vec2(entity():up():x(),entity():up():y()) * Length * Weight
+
+
+
+
+Antena_vel += clamp(Vel:length()-Antena_vel,-Inertia_coefficient,Inertia_coefficient)
+Inertia = vec2(entity():vel():x(),entity():vel():y()):normalized() * (Antena_vel)
+
+
+Force = Resistance + Gravity + Inertia 
+
+update_antenna(Force)
+
+if(dupefinished()){
+    reset()
+}

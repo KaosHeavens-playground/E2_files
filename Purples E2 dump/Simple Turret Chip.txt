@@ -1,0 +1,290 @@
+@name Reds Simple Turret Chip V3
+@inputs Active [Gun]:entity [CamController Pod]:wirelink RemoteFire RemoteAimpos:vector 
+@outputs Fire
+@persist Cam [Gunner Seat]:entity Manned Curtime CamAvailable DegreesPerSecond
+@persist [Inertia Neg Pos Spd Ang]:angle
+@persist Muzvel RangefinderIndex UpdateScopeTick [ShootPos]:vector TimeOfSwitch
+#[
+This was made by redreaper, of FRS.  Our IP is 70.42.74.154:27015.
+
+WIRING
+Active must be wired, it's if the chip runs at all.
+Gun is, obviously, the gun entity.
+Pod is wired to a gunner's seat, if it can be used as a remote turret.
+CamController is the same, wired to the cam linked to a gunner's seat if a gunner can take control
+RemoteFire is fire input if it's being used as a remote turret
+RemoteAimpos, again, if being used as remote turret it's the aimpos of that turret.
+
+Basically, you wire "what's needed" and on first execution the chip decides how to proceed off of this.
+When in action, if it has a gunner, and is wired for this, it will use their inputs, with a cam if it's linked.
+If there's no gunner, it'll use the "remote" inputs.
+
+It will ONLY fire if its aim is within its limits, the negative/positive angles.
+
+Below, you must set the depression, elevation, yaw, and speed limits.  For example an M1's turret would be like 8 depression, 15 elevation, 360 yaw, and maybe 40 degrees per second.
+]#
+
+interval(75)
+Curtime = curtime()
+
+if(dupefinished()) {reset()}
+elseif(first())
+    {
+        Depression = 15                      #Degrees down your gun points
+        Elevation = 45                   #Degrees up your gun pounts
+        Yaw = 360                            #Degrees of yaw your gun will slew--360 is a full circle
+        DegreesPerSecond = 30                   #Degrees per second
+        #DONT EDIT BELOW THIS
+        Neg = ang(-Elevation,-Yaw/2,0)#negative angle limit
+        Pos = ang(Depression,Yaw/2,0)#positive angle limit
+        Seat = Pod:entity("Entity")
+        CamAvailable = CamController:entity():isValid()
+        Inertia = shiftL(ang(Gun:inertia()))*-20#inertia of the gun
+        CamController["Position",vector] = vec(0,0,25)
+        CamController["Parent",entity] = entity()
+        rangerPersist(1)
+        rangerFilter(Gun:getConstraints())
+
+        #Recoding it as a function.  This will work at up to interval(75)
+        function angle aimGun(Neg:angle,Pos:angle,DegreesPerSecond:number,Aimpos:vector,DeltaCurtime:number,OldAngle:angle,Gun:entity,Inertia:angle,SuperElevation:angle)
+            {
+                #Fixing degrees per second to run on adjusted timescale
+                local Speed = DeltaCurtime * DegreesPerSecond
+                #Setting a start angle for modification
+                local Ang = OldAngle
+                #Inputs
+                local AngleInput = -heading(Gun:massCenter(),entity():toWorld(Ang),Aimpos) + SuperElevation
+                #Traverse
+                Ang = Ang:rotateAroundAxis(Ang:up(),clamp(AngleInput:yaw(),-Speed,Speed))
+                #Elevation
+                Ang = Ang:rotateAroundAxis(Ang:right(),-clamp(AngleInput:pitch(),-Speed,Speed))
+                #Clamping
+                Ang = clamp(Ang,Neg,Pos)
+                #Aiming gun
+                local GunHeading = Gun:toLocal(entity():toWorld(Ang))
+                #Scaling
+                local CurtimeAdjustedForce = DeltaCurtime / 0.066 #Defaults to 1 on interval(50)
+                Gun:applyAngForce( (((Gun:angVel() * Inertia) + (-GunHeading * (Inertia * 10))):setRoll(0)) * CurtimeAdjustedForce)
+                return Ang
+            }
+        #Misc
+        Manned = 0
+        #Range sight functions
+        function array buildDropTable(Gun:entity,N:number)
+            {
+                #Early setup
+                #A reference holo
+                holoCreate(N,vec(0,0,0),vec(0,0,0),ang(0,0,0))
+                holoAlpha(N,0)
+                local ReferenceEntity = holoEntity(N)
+                #Primary setups
+                local Muzvel = Gun:acfMuzzleVel()
+                local DragConstant = ( (3.1416 * (Gun:acfCaliber()/2)^2 )/10000)/(100*Gun:acfProjectileMass())
+                local ACCEL = vec(0,0,-gravity())
+                local Timescale = 0.099 #Timescale.  Perfect accuracy is at 0.066.  Drift will increase in proprtion to timescale accumulation errors; direct recreation is often excessive.
+                local Coordinates = array()
+                #Initial flight setup
+                local Flight = ReferenceEntity:forward():setZ(0) * (Muzvel * 39.37)
+                local Pos = ReferenceEntity:pos()
+                local Drag = vec(0,0,0)
+                local NextPos = vec(0,0,0)
+                #Used for range comparison, and drop adjustment
+                local StartPos = Pos
+                #Flags for data, will use for interpolation & storage later
+                local TableIncrements = 100  #Range Increments
+                local TableMaxRange = 400   #Maximum range, should never need to exceed 600
+                local TableSlot = 1         #Slot it's attempting to insert data, start at 1
+                #
+                local Distance = 0
+                #Backup to prevent failure on empty guns
+                if(!Muzvel) {return Coordinates}
+                #Actual ballistics calculation
+                #This will return 4 points in an array, encoded with LOCALIZED & NORMALIZED X/Y/Z, and time for the 4th axis.
+                #It is for all intents and purposes perfectly accurate, and is capped at a flight time of 7.5s.  It is recommended not to fuck with this.  Flight time = S * 15.1 * (Timescale/0.66)
+                for(N=1,76)
+                    {
+                        Drag = Flight:normalized()*(DragConstant*Flight:length2())/80
+                        NextPos = Pos + Flight*Timescale
+                        Flight = Flight + (ACCEL-Drag)*Timescale
+                        #Array building--if we pass a certain point, it flags the condition being met, averages the point & its predecessor, and stores it.
+                        Distance = ((NextPos - StartPos):setZ(0):length()) / 52.49343832021 #This converts to meters, and, at the same time fixes the quite stupid gmod 1.33 map scaling thing.
+                        if(Distance > (TableIncrements*TableSlot))
+                            {Coordinates:pushNumber(ReferenceEntity:elevation((Pos + NextPos) / 2))
+                            TableSlot++}
+                        if(Distance > TableMaxRange)
+                            {holoDelete(N)
+                            return Coordinates}
+                        Pos = NextPos
+                    }
+                #If we somehow, i don't even know how, failed to build a range-table, it'll return what it managed to build
+                holoDelete(N) #Cleaning up our reference holo--I know it's a messy solution, it works though.
+                return Coordinates
+            }
+            
+        #Function designed to create an entire holographic stradiametric drop indicator system, parented to a single "master" holo, which is in turn parented to the input entity.
+        #It is intended to be used as a "black box" code piece
+        function number createScope(Data:array,I:number,Parent:entity,User:entity)
+            {
+                holoCreate(I,vec(0,0,0),vec(1,1,1),ang(0,0,0))
+                holoAlpha(I,0)
+                holoParent(I,Parent)
+                #Center aiming marker
+                holoCreate(I+1,holoEntity(I):toWorld(vec(250,0,0)),vec(0.005,6,0.03),ang(0,0,0)) #Center should be approximately 6u on scale, assuming 250 distance, for 150 mils
+                holoParent(I+1,I)
+                #Indexing
+                local RangeInputs = Data:count()
+                #Creating stradia
+                for(N=1,RangeInputs)
+                    {
+                        local Index = I+N+1
+                        holoCreate(Index,holoEntity(I):toWorld(ang(-Data:number(N),0,0)):forward() * 250,vec(0.02,N*0.2,0.02),ang(0,0,0))
+                        #holoModel(Index,"hq_icosphere")
+                        holoParent(Index,I+1)
+                    }
+                #Creating mil markers, at intervals of 50 mils.  50 mils = 2.8125 degrees.
+                #Markers are at 0, 50, and 100 mils, while the main sight bar is 150.
+                for(X=1,5)
+                    {
+                        local Index = I+RangeInputs+X+1
+                        local Angle = ang(0,(X-3)*2.8125,0)
+                        holoCreate(Index,(holoEntity(I):toWorld(Angle):forward():setZ(-0.003)) * 250,vec(0.125,0.125,0.125))
+                        holoModel(Index,"hq_cone")
+                        holoParent(Index,I+1)
+                    }
+                #Creating the range-finder's indicator--Mr White suggested the location, and I think it was a good idea.
+                local Index = I+RangeInputs+7
+                local StartPos = holoEntity(I+RangeInputs+3):toWorld(vec(0,-10,-10))
+                holoCreate(Index,StartPos,vec(0.5,0.1,0.5),ang(0,90,0))
+                holoModel(Index,"models/sprops/misc/alphanum/alphanum_0.mdl")
+                holoParent(Index,holoEntity(I+1))
+                holoCreate(Index+1,StartPos+vec(0,-5,0),vec(0.5,0.1,0.5),ang(0,90,0))
+                holoModel(Index+1,"models/sprops/misc/alphanum/alphanum_0.mdl")
+                holoParent(Index+1,holoEntity(I+1))
+                holoCreate(Index+2,StartPos+vec(0,-10,0),vec(0.5,0.1,0.5),ang(0,90,0))
+                holoModel(Index+2,"models/sprops/misc/alphanum/alphanum_0.mdl")
+                holoParent(Index+2,holoEntity(I+1))
+                
+                #Coloring and materializing
+                holoAlpha(I,0)#master holo
+                #holovisible setup
+                local OtherPlayers = array()
+                foreach(K,V:entity = players())
+                    {if(V != User) {OtherPlayers:pushEntity(V)}}
+                
+                for(X=1,RangeInputs+9)
+                    {
+                        holoMaterial(X+I,"phoenix_storms/fender_white")
+                        holoColor(X+I,vec4(0,0,0,192))
+                        holoDisableShading(X+I,1)
+                        holoVisible(X+I,OtherPlayers,0)
+                    }
+                #Returning a numeric index for referencing the rangefinder
+                return I+RangeInputs+7
+            }
+            
+        #Function tied to the above function, which updates the scope's position
+        function number updateScope(I:number,Gun:entity,Pos:vector,Aimpos:vector,OldReturn:number,RangefinderIndex:number)
+            {
+                if(Pos)
+                    {holoPos(I,Pos)}
+                holoAng(I,((Gun:pos() + (Gun:forward() * 50000)) - holoEntity(I):pos()):toAngle())
+                #Updating the rangefinder
+                if(OldReturn >= 5)
+                    {
+                        local Range = round((Aimpos-Gun:attachmentPos("muzzle")):length() / 524.9343832021)
+                        local Formatted = Range:toString():explode("") #Creates an array in tens of meters of range
+                        if(Range >= 10)
+                            {
+                                holoModel(RangefinderIndex,"models/sprops/misc/alphanum/alphanum_"+Formatted:string(1)+".mdl")
+                                holoModel(RangefinderIndex+1,"models/sprops/misc/alphanum/alphanum_"+Formatted:string(2)+".mdl")
+                            }
+                        else
+                            {
+                                holoModel(RangefinderIndex,"models/sprops/misc/alphanum/alphanum_0.mdl")
+                                holoModel(RangefinderIndex+1,"models/sprops/misc/alphanum/alphanum_"+Formatted:string(1)+".mdl")
+                            }
+                        return 0
+                    }
+                else
+                    {
+                        return OldReturn+1
+                    }
+            }
+        
+    }
+
+runOnKeys(Gunner,1)
+if(keyClk())
+    {
+        if(Gunner:keyUse()&Gunner:keyAttack2()) {Seat:ejectPod()} #Holding e but can't eject?  Hold mouse2 with it--it'll kick you out!
+    }
+elseif(Active)
+    {
+        if(changed(Active))
+            {
+                Ang = entity():toLocal(Gun:angles())
+            }
+            
+        Manned = Pod:number("Active")
+        
+        if(Manned) #Someone is controlling the aim directly, in a seat
+            {
+                if(changed(Manned))
+                    {
+                        if(CamAvailable)
+                            {
+                                CamController["Activated",number] = Manned
+                            }
+                            Gunner = Seat:driver()
+                    }                
+                elseif(CamAvailable)
+                    {
+                        ShootPos = CamController:vector("CamPos")
+                        Aimpos = rangerOffset(50000,ShootPos,CamController:vector("CamDir")):position()
+                    }
+                else
+                    {
+                        ShootPos = Gunner:shootPos()
+                        Aimpos = rangerOffset(50000,ShootPos,Gunner:eye()):position()
+                    }
+                FireTrigger = Pod:number("Mouse1")
+                #Updating scope
+                #Range-Table
+                if(Muzvel != Gun:acfMuzzleVel() | (changed(Manned) & Manned) | changed(Active))
+                    {
+                        if((curtime() > (TimeOfSwitch+1)) | (changed(Manned) & Manned) | changed(Active))
+                            {
+                                TimeOfSwitch = curtime()
+                                Muzvel = Gun:acfMuzzleVel()
+                                if(CamAvailable) {TempParent = entity()} else {TempParent = Pod:entity()}
+                                RangefinderIndex = createScope(buildDropTable(Gun,250),1,TempParent,Gunner)
+                                UpdateScopeTick = updateScope(1,Gun,ShootPos,Aimpos,UpdateScopeTick,RangefinderIndex)
+                            }
+                    }
+                else
+                    {
+                        UpdateScopeTick = updateScope(1,Gun,vec(0,0,0),Aimpos,UpdateScopeTick,RangefinderIndex)
+                    }
+                
+            }
+        else
+            {
+                FireTrigger = RemoteFire
+                Aimpos = RemoteAimpos
+            }
+        #Aiming gun
+        Ang = aimGun(Neg,Pos,DegreesPerSecond,Aimpos,$Curtime,Ang,Gun,Inertia,ang(0,0,0))
+        #Firing
+        if(FireTrigger)
+            {
+                Fire = inrange(entity():heading(Aimpos),Neg,Pos)
+            }
+        else
+            {
+                Fire = 0
+            }
+    }
+elseif($Active == -1)
+    {
+        reset()
+    }

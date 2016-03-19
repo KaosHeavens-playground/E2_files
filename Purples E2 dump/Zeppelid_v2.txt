@@ -1,0 +1,167 @@
+@name Zeppelid_v2
+@inputs [Pod]:entity ThrottleUp ThrottleDown Pitf Pitb Yawl Yawr Autolevel
+@outputs Throttle 
+@persist [Body TotalBody Friends]:array Throttle N LMOD RVec:vector TVec:vector CSPD Pos:vector LPos:vector LOff:vector
+@persist TotalMass CurrentMass DivMul M Mass
+@persist [HQ CQ]:quaternion Running
+#tweaks
+@persist BodyMDL:string EngineMDL:string NegAmount RDamp PitchForce YawForce REffect MaxThrust
+@trigger 
+#Two modes, freefloat and autolevel
+#Heavy damping in all directions, and on rotation
+#Throttled movement
+#Move engines
+interval(10)
+if(dupefinished())
+{
+    reset()
+}
+if(first())
+{
+    EngineMDL = "models/sprops/trans/air/prop_2b_l.mdl" #What is your engine model - What we spinnin?
+    BodyMDL = "models/sprops/cuboids/height24/size_2/cube_36x240x24.mdl" #What is your base model
+    NegAmount = 12 #Force amount upwards - grabbity negation
+    RDamp = 10 #Rotational Damping
+    PitchForce = 5
+    YawForce = 14
+    REffect = 3 #Roll effect from yaw
+    MaxThrust = 35 #Maximum throttle
+    
+    #This is to find your engines.
+    Friends = entity():getConstraints()
+    Running = 0
+    N = 1
+    timer("engines", 100)
+}
+if(clk("engines"))
+{
+    while((N <= Friends:count()) & perf())
+    {
+        if(Friends[N, entity]:model() == EngineMDL)
+        {
+            N++
+        }
+        else
+        {
+            Friends:remove(N)
+        }
+    }
+    if( N <= Friends:count() )
+    {
+        timer("engines", 100)
+    }
+    else
+    {
+        N = 1
+        M = 1
+        Body = entity():getConstraints()
+        TotalBody = Body
+        TotalMass = 0
+        timer("body", 100)
+    }
+}
+
+if(clk("body"))
+{
+    while((N <= Body:count()) & perf())
+    {
+        TotalMass += Body[N, entity]:mass()
+        if(Body[N, entity]:model() == BodyMDL)
+        {
+            N++
+        }
+        else
+        {
+            Body:remove(N)
+        }
+    }
+    if(N <= Body:count())
+    {
+        timer("body", 100)
+    }
+    if(N > Body:count())
+    {
+        HQ = inv(quat(Body[1, entity])) * quat(vec(0, 1, 0), vec(0, 0, 1))
+        Running = 1
+        print("done")
+    }
+}
+if(Autolevel & ~Autolevel)
+{
+    LMOD = !LMOD
+    if(LMOD)
+    {
+        Pod:hintDriver("Autolevel Enabled", 3)
+    }
+    else
+    {
+        Pod:hintDriver("Autolevel Disabled", 3)
+    }
+}
+if(clk() & Running)
+{
+    CQ = quat(Body[1, entity]) * HQ
+    Throttle = clamp(Throttle + (ThrottleUp - ThrottleDown) * 0.005, 0, 1) * !LMOD
+    Pos = entity():pos()
+    if(!LMOD)
+    {
+        LPos = Pos
+    }
+    if(LMOD)
+    {
+        LPos = LPos + vec(0, 0, 1) * (Pitf - Pitb) * 1
+    }
+    LOff = (LPos - Pos):setX(0):setY(0)
+    CSPD = ($Pos):dot(CQ:forward())
+        
+    #Mass Scaling
+    if(M <= TotalBody:count())
+    {
+        Mass += TotalBody[M, entity]:mass()
+        M++
+    }
+    else
+    {
+        DivMul = Mass / TotalMass
+        M = 1
+        Mass = 0
+    }
+    
+    if((TotalMass != 0) & (Mass != 0))
+    {
+        DivMul = Mass / TotalMass
+    }
+    else
+    {
+        DivMul = 1
+    }
+    #MOVEMENT
+    N = 1
+    while(N <= Body:count())
+    {
+        TVec = !LMOD*((Pitb - Pitf) * PitchForce * CQ:up() + (Yawr - Yawl) * YawForce * CQ:right() * clamp(CSPD / 2.5, 0, 1)) * Body[N, entity]:mass()
+        Body[N, entity]:applyOffsetForce((TVec), Body[N, entity]:massCenter() + CQ:forward() * 100 - CQ:up() * 50)
+        Body[N, entity]:applyOffsetForce((-TVec), Body[N, entity]:massCenter() - CQ:forward() * 100 - CQ:up() * 50)
+        TVec = !LMOD*(Yawr - Yawl) * CQ:up() * -REffect * Body[N, entity]:mass() * clamp(CSPD / 2.5, 0, 1)
+        Body[N, entity]:applyOffsetForce(TVec, Body[N, entity]:massCenter() + CQ:right() * 100)
+        Body[N, entity]:applyOffsetForce(-TVec, Body[N, entity]:massCenter() - CQ:right() * 100)
+        #Rotational Damping
+        Body[N, entity]:applyTorque(Body[N, entity]:angVelVector() * -RDamp * Body[N, entity]:inertia())
+        #Movement damping
+        Body[N, entity]:applyForce((Throttle * MaxThrust * CQ:forward() + ($Pos) * -5 + LMOD*(LOff+$LOff*5) * 8) * Body[N, entity]:mass())
+        #Partial Gravity negation
+        Body[N, entity]:applyOffsetForce(DivMul * NegAmount * Body[N, entity]:mass() * vec(0, 0, 1), Body[N, entity]:massCenter() + CQ:up() * 100)
+        N++
+    }    
+    #ENGINES
+        
+    N = 1
+    while(N <= Friends:count())
+    {
+        RVec = Friends[N, entity]:toLocal(Friends[N, entity]:pos()+CQ:forward())
+        CSPD = Throttle * 1000 - RVec:dot(Friends[N, entity]:angVelVector())
+        Friends[N, entity]:applyTorque((CSPD) * RVec * Friends[N, entity]:inertia())
+        N++
+    }
+
+}

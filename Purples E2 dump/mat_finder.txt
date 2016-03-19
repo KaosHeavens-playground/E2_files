@@ -1,0 +1,11 @@
+@name mat finder
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+E = entity():isConstrainedTo()
+
+M = E:getMaterial()
+
+print(M)

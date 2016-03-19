@@ -1,0 +1,45 @@
+@name Ejection Seat
+@inputs Base:entity Eject Active Ammo 
+@outputs Weld Camera Thrusters Ejected
+@persist Ejected
+@trigger 
+
+interval(10)
+if(first()|dupefinished()){
+Weld = 1
+}
+
+if (~Ammo & Ammo){    soundPlay(1,60,"ambient/alarms/doomsday_lift_alarm.wav")
+soundPitch(1,150) }
+
+if(Active){
+   if(Eject&~Eject){
+      Ejected = 1
+   Thrusters = 1
+}
+   if(Ejected){
+      Camera = 0
+   }else{
+      Camera = 1
+   }
+}
+
+if (Eject){timer("Go1",1)}
+if (~Eject & Eject){    soundPlay(1,60,"ambient/machines/wall_crash1.wav")
+soundPitch(1,150) }
+
+if (clk("Go1")) {
+    Weld = 0
+    Start = 1
+   
+ timer("reset1", 1000)}
+    
+if(Start){Base:applyForce((Base:forward() * Base:mass())*-300)}
+
+if (clk("reset1")) {
+    Start = 0
+   Thrusters = 0
+        }
+
+
+

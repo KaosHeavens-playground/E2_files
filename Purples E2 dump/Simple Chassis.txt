@@ -1,0 +1,76 @@
+@name Tangos Simple Chassis E2
+@inputs Link:wirelink
+@outputs L R 
+@outputs Throttle Clutch Brake
+@persist Centre Change
+
+#variables to change if you have different steering arrangements
+
+Centre = 56.65  #The length of the hydros when the steering bar is centred.
+Change = 30     #The amount that the hydros will change by
+
+#wirelink assignments
+
+W = Link:number("W")
+A = Link:number("A")
+S = Link:number("S")
+D = Link:number("D")
+
+
+runOnTick(10)
+
+#Steering Section
+
+#if no input is recieved, or both directions are pressed, centre the hydros.
+if((!A & !D) | (A & D))
+{
+    L = Centre
+    R = Centre
+}
+
+#if the A button is pressed, lengthen L and shorten R.
+if(A & !D)
+{
+    L = Centre + Change
+    R = Centre - Change
+}
+
+#if the D button is pressed, shorten L and lengthen R.
+if(D & !A)
+{
+    L = Centre - Change
+    R = Centre + Change
+}
+
+
+
+
+#Throttle/Clutch/Brakes Section
+
+if(!W & !S)
+{
+    Throttle = 0
+    Brake = 0
+    Clutch = 1
+}
+
+if(W & !S)
+{
+    Throttle = 100
+    Brake = 0
+    Clutch = 0    
+}
+
+if(S & !W)
+{
+    Throttle = 0
+    Brake = 5 #Lower this value if you get wheel spaz when you brake, raise it for more powerful brakes.
+    Clutch = 1
+}
+
+if(W & S)
+{
+    Throttle = 100
+    Brake = 5
+    Clutch = 1
+}

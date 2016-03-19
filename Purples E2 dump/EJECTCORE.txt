@@ -1,0 +1,83 @@
+@name EJECTCORE
+@inputs [Seat Seat2 Cockpit Cockpit2 Control Control2 Misc Misc2]:entity MARINES WERELEAVING
+@outputs Ejected Ejected2 Time Time2 EJECT2 
+@persist [Force Force2]:vector EJECT EJACT EJECT2 EJACT2 Time Time2 EjectForce
+@trigger all
+interval(10)
+
+#original chip by karbine, modifications and optimization by Foran 
+#changed over to prop+constraintcore for easy of use. no more latches needed!
+
+#MARINES ejects seat 1
+#WERELEAVING ejects seat 2
+
+#control+control2 and Misc+misc2 will kill any entities you want to destroy upon ejection, like cockpit windows or wire gates. 
+#THEY WILL NOT KILL E2 CHIPS. 
+#Wire
+
+if(first())
+{
+    EjectForce = 500
+    
+}
+
+Force = vec()
+Force2 = vec()
+
+if(EJACT)
+{
+    Force = Force + entity():up() * Seat:mass() * EJECT * MARINES
+    Seat:deparent()
+    Seat:propFreeze(0)
+    Seat:constraintBreak()
+    Seat:applyForce(Force)
+    Cockpit:deparent()
+    Cockpit:propFreeze(0)
+    Cockpit:propDelete()
+    Control:propDelete()
+    Misc:propDelete()
+    Chipstop=1
+}
+if(EJACT2)
+{
+    Force2 = Force2 + entity():up() * Seat2:mass() * EJECT2 * WERELEAVING 
+    Seat2:deparent()
+    Seat2:propFreeze(0)
+    Seat2:constraintBreak()
+    Seat2:applyForce(Force2)
+    Cockpit2:deparent()
+    Cockpit2:propFreeze(0)
+    Cockpit2:propDelete()
+    Control2:propDelete()
+    Misc2:propDelete()
+    Chipstop=1
+}
+if(MARINES & ~MARINES) {EJACT = !EJACT Seat:soundPlay(0,0,"acf_extra/tankfx/guns/tank_stealth_fire.wav")}
+if(WERELEAVING & ~WERELEAVING) {EJACT2 = !EJACT2 Seat2:soundPlay(0,0,"acf_extra/tankfx/guns/tank_stealth_fire.wav")}
+
+if(EJACT)
+{
+    Ejected = 1
+Time = Time+1
+if(Time > 130) {Seat:applyForce(vec(0,0,Seat:mass()*5))}
+if(Time < 10) {EJECT = EjectForce}
+else {EJECT = 0}
+
+}
+if(EJACT2)
+{
+    Ejected2 = 1
+Time2 = Time2+1
+if(Time2 > 30) {Seat2:applyForce(vec(0,0,Seat:mass()*5))}
+if(Time2 < 10) {EJECT2 = EjectForce}
+else {EJECT2 = 0}
+
+}
+
+
+
+
+
+
+
+

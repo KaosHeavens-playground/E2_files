@@ -1,0 +1,38 @@
+@name Holo Radar
+@inputs
+@persist Scale Base:entity I
+
+interval(80)
+
+Base = entity()
+I++
+II=I*6
+
+if (first() | dupefinished()){
+
+Scale = 1
+
+    function holo(Index:number,Parent:entity,Scale:vector,Model:string,Pos:vector,Ang:angle,Color:vector,Material:string){
+        holoCreate(Index)
+        holoParent(Index,Parent)
+        holoScale(Index,Scale)
+        holoModel(Index,Model)
+        holoPos(Index,Pos)
+        holoAng(Index,Ang)
+        holoColor(Index,Color)
+        holoMaterial(Index,Material)
+}
+
+
+holo(2,Base,vec(Scale),"models/sprops/cylinders/size_3/cylinder_6x48.mdl",Base:pos()+vec(27.03,0.064,76.535)*Scale,ang(-90,0.149,180),vec(100,100,100),"WTP/metal_5c")
+holo(3,Base,vec(Scale),"models/sprops/cylinders/size_3/cylinder_6x96.mdl",Base:pos()+vec(48.03,0.119,121.535)*Scale,ang(0,90.15,0),vec(100,100,100),"WTP/metal_5c")
+holo(4,Base,vec(Scale),"models/sprops/geometry/sphere_18.mdl",Base:pos()+vec(48.03,0.119,169.535)*Scale,ang(0,-179.85,0),vec(202,202,202),"models/Magnusson_Teleporter/magnusson_teleporter_fxglow_off")
+holo(5,Base,vec(Scale),"models/sprops/cylinders/size_4/cylinder_9x24.mdl",Base:pos()+vec(0,0,76.5)*Scale,ang(-89.996,90.149,180),vec(56,56,56),"WTP/metal_5c")
+holo(6,Base,vec(Scale),"models/sprops/misc/tubes/size_4/q_tube_48x72.mdl",Base:pos()+vec(0.021,-0.005,111.477)*Scale,ang(-45,-179.85,0),vec(255,255,255),"WTP/track_5b")
+holo(7,Base,vec(Scale),"models/sprops/cylinders/size_5/cylinder_12x96.mdl",Base:pos()+vec(0,0,46.5)*Scale,ang(0,0.15,0),vec(102,102,102),"WTP/metal_5c")
+holo(8,Base,vec(Scale),"models/sprops/cylinders/size_4/cylinder_9x6.mdl",Base:pos()+vec(0,0,97.5)*Scale,ang(0,-179.85,0),vec(172,172,172),"WTP/metal_7c")
+
+holoParent(6,holoEntity(8))
+}
+
+holoAng(8,Base:toWorld(ang(0,II,0)))

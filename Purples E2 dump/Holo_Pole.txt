@@ -1,0 +1,33 @@
+@name Holo Pole
+@inputs
+@persist Scale
+
+if (first() | dupefinished()){
+
+Base = entity()
+
+Scale = 0.5
+
+    function holo(Index:number,Parent:entity,Scale:vector,Model:string,Pos:vector,Ang:angle,Color:vector,Material:string){
+        holoCreate(Index)
+        holoParent(Index,Parent)
+        holoScale(Index,Scale)
+        holoModel(Index,Model)
+        holoPos(Index,Pos)
+        holoAng(Index,Ang)
+        holoColor(Index,Color)
+        holoMaterial(Index,Material)
+}
+
+
+holo(2,Base,vec(Scale),"models/sprops/cylinders/size_2/cylinder_3x144.mdl",Base:pos()+vec(-0.269,-58.387,530.705)*Scale,ang(-63.101,-90,0),vec(0,0,0),"sprops/textures/sprops_metal5")
+holo(3,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x144.mdl",Base:pos()+vec(0,0,73.5)*Scale,ang(-0.068,-90,-89.827),vec(176,176,176),"WTP/metal_2b")
+holo(4,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x144.mdl",Base:pos()+vec(-0.217,0.085,217.464)*Scale,ang(0,-90,-90),vec(176,176,176),"WTP/metal_2b")
+holo(5,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x144.mdl",Base:pos()+vec(-0.217,0.085,361.464)*Scale,ang(0,-90,-90),vec(176,176,176),"WTP/metal_2b")
+holo(6,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x144.mdl",Base:pos()+vec(-0.217,0.085,505.464)*Scale,ang(0,-90,-90),vec(176,176,176),"WTP/metal_2b")
+holo(7,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x144.mdl",Base:pos()+vec(-0.217,0.085,487.464)*Scale,ang(0,-180,0),vec(176,176,176),"WTP/metal_2b")
+holo(8,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x78.mdl",Base:pos()+vec(-0.217,-110.915,487.464)*Scale,ang(0,180,0),vec(176,176,176),"WTP/metal_2b")
+holo(9,Base,vec(Scale),"models/sprops/misc/tubes/size_2/tube_24x78.mdl",Base:pos()+vec(-0.217,111.085,487.464)*Scale,ang(0,-180,0),vec(176,176,176),"WTP/metal_2b")
+holo(10,Base,vec(Scale),"models/sprops/cylinders/size_2/cylinder_3x144.mdl",Base:pos()+vec(-0.269,58.557,530.705)*Scale,ang(-63.101,90,0),vec(0,0,0),"sprops/textures/sprops_metal5")
+
+}

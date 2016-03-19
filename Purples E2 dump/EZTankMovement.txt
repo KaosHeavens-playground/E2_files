@@ -1,0 +1,31 @@
+@name EZTankMovement
+@inputs Pod:wirelink CVT:wirelink GunReady
+@outputs Throttle Speed WL
+@persist 
+@trigger 
+interval(50)
+
+W=Pod["W",normal]
+S=Pod["S",normal]
+D=Pod["A",normal]
+A=Pod["D",normal]
+
+CVT["Left Clutch",normal]=Pod["Alt",normal]+D
+CVT["Right Clutch",normal]=Pod["Alt",normal]+A
+
+CVT["Left Brake",normal]=D*8.5
+CVT["Right Brake",normal]=A*8.5
+
+Throttle=(W|S|A|D)*100
+
+CVT["Gear",normal]=1+S
+
+Speed=abs(entity():velL():x())
+
+Rate=4650 #The higher this value, the sooner you will reach high RPM at lower speeds (good for more torque). Usually range from 2000-6000
+InitialTorque=0.125 #The lower this value, the more initial torque when the tank is stopped. Usuually range from 0.01-0.5
+CVT["CVT Ratio",normal]=Speed/Rate+InitialTorque
+
+WL=Pod["Space",normal]+!Pod["Active",normal]
+
+if(~GunReady&GunReady<1){soundPlay(0,0,"acf_extra/tankfx/gnomefather/autoloader5.wav")}

@@ -1,0 +1,25 @@
+@name ACF aimed turret
+#Written by: Purple
+@inputs Turret:entity
+@outputs Active Reload Fire
+@persist Ang:angle Vec:vector Hover_Height  
+@trigger 
+
+
+runOnTick(1)
+
+if(first())
+{
+    Hover_Height = 50
+}
+Vec = entity():pos() - Turret:pos() + vec(0,0,Hover_Height)
+Turret:applyForce((Vec + $Vec*5)*Turret:mass()*10)
+
+
+Pitch = Turret:elevation(owner():aimPos())
+Yaw = Turret:bearing(owner():aimPos())
+Roll = Turret:angles():roll()/15
+
+Ang = -ang(Pitch,Yaw,Roll)
+
+Turret:applyAngForce((Ang + $Ang*5)*Turret:mass()*10)

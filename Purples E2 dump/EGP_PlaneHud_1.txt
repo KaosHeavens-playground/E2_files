@@ -1,0 +1,31 @@
+@name EGP PlaneHud 1
+@inputs [Seat Cannon]:entity E:wirelink Active
+@outputs 
+@persist 
+@trigger Active
+
+#Thanks to Dirtyfish for EGP Tankhud 3
+
+if (~Active & Active)
+{
+    E:egp3DTracker(1, Cannon:pos())
+    E:egpParent(1, Cannon)
+    E:egpPos(1, vec(1000000, 0, 0))
+    #Outline
+    E:egpCircleOutline(2, vec2(0,0), vec2(20,20))
+    E:egpColor(2, vec(255, 200, 0))
+    #Circle 1
+    E:egpCircle(3, vec2(0,5), vec2(2,2))
+    E:egpColor(3, vec(255, 100, 0))
+    #Circle 2
+    E:egpCircle(4, vec2(5,0), vec2(2,2))
+    E:egpColor(4, vec(255, 100, 0))
+    #Circle 3
+    E:egpCircle(5, vec2(-5,0), vec2(2,2))
+    E:egpColor(5, vec(255, 100, 0))
+    E:egpParent(2,1)
+    E:egpParent(3,1)
+    E:egpParent(4,1)
+    E:egpParent(5,1)
+}
+

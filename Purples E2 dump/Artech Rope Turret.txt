@@ -1,0 +1,125 @@
+@name Artech Rope Turret Creation MkIII
+@inputs [Base TBase Gun TBase2 Gun2]:entity
+
+if(first()){
+    runOnChat(1)
+}
+if(chatClk(owner())&lastSaid():explode(""):string(1)==">"){
+    hideChat(1)
+    if(lastSaid():explode(" "):count()==2){
+        if(lastSaid():explode(" "):string(1)==">rope"){
+            if(!lastSaid():explode(" "):string(2)){
+                print("Please define rope thickness! (Say >rope [THICKNESS])")
+            }
+            else{
+                local RopeThickness = clamp(lastSaid():explode(" "):string(2):toNumber(),0,5)
+                print(RopeThickness)
+                if(Gun){
+                    local GunPos = Gun:massCenter()
+                    local TempVector = vec(TBase:pos():x(),TBase:pos():y(),GunPos:z())
+                    
+                    Gun:removeConstraint("AdvBallsocket")
+                    Gun:removeConstraint("Rope")
+                    
+                    local Up = TempVector + vec(0,0,TempVector:distance(GunPos))
+                    local Down = TempVector + vec(0,0,-TempVector:distance(GunPos))
+                    local Left = GunPos + vec(TempVector:distance(GunPos),0,0)   
+                    local Right = GunPos + vec(-TempVector:distance(GunPos),0,0)
+                    
+                    Base:ropeTo(Gun,Base:toLocal(Up),Gun:toLocal(Left),0,0,RopeThickness,"",1)
+                    Base:ropeTo(Gun,Base:toLocal(Up),Gun:toLocal(Right),0,0,RopeThickness,"",1)
+                    Base:ropeTo(Gun,Base:toLocal(Down),Gun:toLocal(Left),0,0,RopeThickness,"",1)
+                    Base:ropeTo(Gun,Base:toLocal(Down),Gun:toLocal(Right),0,0,RopeThickness,"",1)
+                    if(TBase){
+                        TBase:removeConstraint("Axis")
+                        TBase:removeConstraint("AdvBallsocket")
+                        TBase:removeConstraint("Rope")
+                        
+                        TBase:advballsocketTo( Gun, vec(), vec(), -vec( 180 , 180, 0.1 ), vec( 180, 180, 0.1 ), vec(), 0, 0, 1, 1 )
+                        TBase:axisTo(Base,vec(),Base:toLocal(TBase:massCenter()),0,0,0,1,TBase:toLocal(TBase:pos()+vec(0,0,1)))
+                        TBase:advballsocketTo( Base, vec(), vec(), -vec( 0.1 , 0.1, 180 ), vec( 0.1, 0.1, 180 ), vec(), 0, 0, 1, 1 )
+                        if(Gun2){
+                            local Gun2Pos = Gun2:massCenter()
+                            
+                            local TempVector2 = vec(TBase:pos():x(),TBase:pos():y(),Gun2Pos:z())
+                            
+                            local Up2 = TempVector2 + vec(0,0,TempVector2:distance(Gun2Pos))
+                            local Down2 = TempVector2 + vec(0,0,-TempVector2:distance(Gun2Pos))
+                            local Left2 = Gun2Pos + vec(TempVector2:distance(Gun2Pos),0,0)   
+                            local Right2 = Gun2Pos + vec(-TempVector2:distance(Gun2Pos),0,0)
+                            
+                            local TBasePosXY = vec(Base:toLocal(TBase:pos()):x(),Base:toLocal(TBase:pos()):y(),0)
+                            
+                            Gun2:removeConstraint("AdvBallsocket")
+                            Gun2:removeConstraint("Rope")
+                            Gun2:removeConstraint("Ballsocket")
+                            
+                            Base:ropeTo(Gun2,Base:toLocal(Up2),Gun2:toLocal(Gun2:massCenter()),0,0,RopeThickness,"",1)
+                            Base:ropeTo(Gun2,TBasePosXY,Gun2:toLocal(Gun2:massCenter()),0,0,RopeThickness,"",1)
+                            
+                            Gun:ropeTo(Gun2,Gun:toLocal(Left),Gun2:toLocal(Gun2:massCenter()),0,0,RopeThickness,"",1)
+                            Gun:ropeTo(Gun2,Gun:toLocal(Right),Gun2:toLocal(Gun2:massCenter()),0,0,RopeThickness,"",1)
+                            
+                            TBase:ballsocketTo(Gun2, Gun2:toLocal(Gun2:massCenter()), 0, 0, 1)
+                            if(round(TBase:mass())==24|round(TBase:mass())==1){
+                                if((Gun2:mass()/8)<150){
+                                    TBase2:setMass(150)
+                                }
+                                else{
+                                    TBase2:setMass((Gun2:mass()/8))
+                                }
+                            }
+                            if(TBase2){
+                                local TempVector3 = vec(TBase:pos():x(),TBase:pos():y(),TBase2:massCenter():z())
+                                local Up3 = TempVector3 + vec(0,0,TempVector3:distance(TBase2:massCenter()))
+                                local Down3 = TempVector3 + vec(0,0,-TempVector3:distance(TBase2:massCenter()))
+                                
+                                TBase2:removeConstraint("Axis")
+                                TBase2:removeConstraint("AdvBallsocket")
+                                TBase2:removeConstraint("Rope")
+                                
+                                Base:ropeTo(TBase2,Base:toLocal(Up3),TBase2:toLocal(TBase2:massCenter()),0,0,RopeThickness,"",1)
+                                Base:ropeTo(TBase2,Base:toLocal(Down3),TBase2:toLocal(TBase2:massCenter()),0,0,RopeThickness,"",1)
+                                TBase2:axisTo(TBase,vec(),TBase:toLocal(TBase:massCenter()),0,0,0,1,TBase:toLocal(TBase:pos()+vec(0,0,1)))
+                                TBase2:advballsocketTo( Gun2, vec(), vec(), -vec( 180 , 0.1, 0.1 ), vec( 180, 0.1, 0.1 ), vec(), 0, 0, 1, 1 )
+                                if(round(TBase2:mass())==24|round(TBase2:mass())==1){
+                                    if((Gun2:mass()/8)<150){
+                                        TBase2:setMass(150)
+                                    }
+                                    else{
+                                        TBase2:setMass((Gun2:mass()/8))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    elseif(lastSaid():explode(" "):string(1)==">clearall"){
+        if(Base){
+            Base:removeConstraint("AdvBallsocket")
+            Base:removeConstraint("Rope")
+        }
+        if(Gun){
+            Gun:removeConstraint("AdvBallsocket")
+            Gun:removeConstraint("Rope")
+        }
+        if(Gun2){
+            Gun2:removeConstraint("AdvBallsocket")
+            Gun2:removeConstraint("Rope")
+            Gun2:removeConstraint("Ballsocket")
+        }
+        if(TBase){
+            TBase:removeConstraint("Axis")
+            TBase:removeConstraint("AdvBallsocket")
+            TBase:removeConstraint("Rope")
+        }
+        if(TBase2){
+            TBase2:removeConstraint("Axis")
+            TBase2:removeConstraint("AdvBallsocket")
+            TBase2:removeConstraint("Rope")
+        }
+    }
+}
