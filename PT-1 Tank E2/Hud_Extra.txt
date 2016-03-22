@@ -1,0 +1,276 @@
+@name Hud Extra
+@inputs [Pod E Gun]:wirelink [Base]:entity Speed Active 
+@outputs Spread TotFuel Fuel 
+@persist T LocalSeat Offset [Name Name2 Name3 TN]:string GunE:entity Mag:table [S BarBase]:vector2 SL [Tanks Gears]:array Fuel Color:vector Reloading Ready Frac Tog Reload TotFuel
+@trigger [Pod E Gun]:wirelink [Base]:entity 
+
+
+interval(100)
+
+if( first() ){
+    #BEGIN SETUP
+    LocalSeat = 0
+    Offset = 180 #If LocalSeat is 1, use this to orient the indicator, else ignore this.
+    Color = vec(255,255,255) #HUD Color Scheme
+    
+    #If the seat is welded to your base, leave this 0.
+    #If the seat is welded to / moves with your turret, make this 1.
+    #Even if your seat is ballsocketed to the base, and rotates with the turret, make this 1.    
+    #END SETUP
+    
+     E:egpClear()
+    GunE = Gun["Entity",entity]
+    Name = GunE:model():explode("/"):string(2)
+    
+Name3 = GunE:acfNameShort()
+Name = Name3:explode("mm"):string(2)
+    
+   
+    SL = Gun["Shots Left",number]
+    
+    Mag["20mmHMG",number] = 5
+    Mag["30mmHMG",number] = 7
+    Mag["40mmHMG",number] = 10
+    Mag["20mmAC",number] = 3
+    Mag["30mmAC",number] = 3
+    Mag["40mmAC",number] = 3
+    Mag["50mmAC",number] = 3
+    Mag["25mmSA",number] = 2
+    Mag["37mmSA",number] = 3.5
+    Mag["45mmSA",number] = 4
+    Mag["57mmSA",number] = 4.5
+    Mag["127mmRAC",number] = 1.5
+    Mag["20mmRAC",number] = 1.5
+    Mag["30mmRAC",number] = 1.5
+    Mag["100mmAL",number] = 18
+    Mag["120mmAL",number] = 28
+    Mag["140mmAL",number] = 35
+    Mag["170mmAL",number] = 40
+    Mag["75mmAL",number] = 14
+    
+    
+    Con = entity():getConstraints()
+    
+    for(I = 1,Con:count()){
+        
+        if(Con[I,entity]:acfIsFuel()){
+            Tanks:pushEntity(Con[I,entity])
+            Fuel += Con[I,entity]:acfFuel()
+            TN = Con[I,entity]:acfName():explode(" "):string(1)
+        }
+         if(Con[I,entity]:acfIsGearbox()){
+            Gears:pushEntity(Con[I,entity])
+        }
+        
+    }
+    TotFuel = Fuel
+    
+    
+    for(I = 1,10){
+        holoCreate(I)
+        holoPos(I,Pod["Entity",entity]:pos())
+        holoParent(I,Pod["Entity",entity])
+        holoAlpha(I,0)
+    }
+    
+    
+    }
+
+
+Driver = Pod["Entity",entity]:driver()
+
+if( changed(Driver) & Driver | first()){
+    S = egpScrSize(Driver)
+    #E:egpText(1,"K/H: 0", vec2(S:x() * 0.2,S:y() * 0.5))
+    E:egpText(2,"FUEL: ", vec2(S:x() * 0.2,S:y() * 0.52))
+    E:egpSetText(2,TN + ": 100%")
+    #E:egpText(3,"GEAR: ", vec2(S:x() * 0.2,S:y() * 0.54))
+    
+    E:egpText(4,"AMMO: 1", vec2(S:x() * 0.8,S:y() * 0.5))
+    E:egpText(5,"MAG: 3", vec2(S:x() * 0.8,S:y() * 0.52))
+    E:egpText(6,"REL: 5", vec2(S:x() * 0.8,S:y() * 0.54))
+    
+    
+    E:egpBoxOutline(7,vec2(S:x() * 0.5,S:y() * 0.9),vec2(S:x()*0.04,S:y()*0.1))
+    E:egpCircleOutline(8,vec2(S:x() * 0.5,S:y() * 0.9),vec2(S:x()*0.015,S:x()*0.015))
+    E:egpBoxOutline(9,vec2(0,-S:y()*0.05),vec2(S:x()*0.005,S:y()*0.05))
+    E:egpParent(9,8)
+    
+    E:egpCircleOutline(100,vec2(0,0),vec2(0,0))
+    E:egpColor(800,Color)
+    E:egpSize(800,2) 
+    
+    for(I = 1,20){
+        E:egpColor(I,Color)
+    }
+    
+    
+if( (Name == "C" | Name == "HW" | Name == "M") ){ 
+    BarBase = vec2(S:x()*0.845,S:y()*0.528)    
+    E:egpBoxOutline(10,BarBase,vec2(S:x()*0.05,S:y()*0.016))
+    E:egpBox(11,BarBase,vec2(S:x()*0.0475,S:y()*0.011))
+}else{
+    BarBase = vec2(S:x()*0.845,S:y()*0.548)    
+    E:egpBoxOutline(10,BarBase,vec2(S:x()*0.05,S:y()*0.016))
+    E:egpBox(11,BarBase,vec2(S:x()*0.0475,S:y()*0.011))
+}
+    
+    
+     
+    
+    
+    
+}
+
+if(LocalSeat == 0){
+    
+SAngle = -Pod["Entity",entity]:angles():yaw()
+GAngle = -Gun["Entity",entity]:angles():yaw()
+Angle = SAngle - GAngle - 90
+E:egpAngle(8,Angle)
+
+}else{
+
+SAngle = -Base:angles():yaw()
+GAngle = -Gun["Entity",entity]:angles():yaw()
+Angle = SAngle - GAngle - Offset
+E:egpAngle(8,Angle)
+
+}
+GunE = Gun["Entity",entity]
+if( (Name == "C" | Name == "HW" | Name == "M") ){
+    Reload =  round(60 / (Gun["Fire Rate",number] ),1.1)
+    E:egpSetText(4,"AMMO: " + toString(Gun["AmmoCount",number] + (Gun["Shots Left",number] * (GunE:acfAmmoType() != "Empty")) ) + " [" + GunE:acfAmmoType() + "]")
+   
+    E:egpSetText(6,"")
+    
+    Ready = GunE:acfReady()
+    Reloading = GunE:acfIsReloading()
+    
+    if(!Ready){
+        
+        T+=0.1
+        Frac = T / Reload
+        if(Frac > 1){
+            T = Reload
+            Frac = 1
+        
+        }
+         E:egpSetText(5,"REL:" + "                           " + (toString(round(Reload - T,1.1)) + "s"))
+        
+        
+    }else{
+        Frac = 1
+        T = 0
+        
+         E:egpSetText(5,"REL:")
+    }
+    
+    E:egpSize(11,vec2(S:x()*0.0475 * Frac,S:y()*0.011))
+    E:egpPos(11,BarBase - vec2((1-Frac)*BarBase:x()*0.0275,0))
+    
+    
+}else{
+Spread = GunE:acfSpread()
+Reload =  round(60 / (Gun["Fire Rate",number] ),1.1)
+    E:egpSetText(4,"AMMO: " + toString(Gun["AmmoCount",number] + (Gun["Shots Left",number] * (GunE:acfAmmoType() != "Empty")) ) + " [" + GunE:acfAmmoType() + "]")
+   
+    E:egpSetText(5,"MAG: " + toString(Gun["Shots Left",number]))
+    
+    Ready = GunE:acfReady()
+    
+    SL = Gun["Shots Left",number]
+    
+    if( $SL > 0&!first()){
+       
+        
+        Reloading = 1  
+        
+        T = 0
+    }
+    
+    timer("tick",500)
+    
+    if(clk("tick")){
+        Tog = !Tog
+    }
+    
+    
+    
+    if(!Ready&!Reloading){
+        
+        T+=0.1
+        Frac = T / Reload
+        if(Frac>1){
+            T = Reload
+            Frac = 1
+            
+        }
+         E:egpSetText(6,"REL:" + "                           " + (toString(round(Reload - T,1.1)) + "s"))
+        
+        
+    }elseif(!Ready&Reloading){
+    
+        T+=0.1
+        Frac = T / (Reload * 2 + Mag[Name3,number])
+         E:egpSetText(6,"REL:" + "                           " + (toString(round((Reload * 2 + Mag[Name3,number]) - T,1.1)) + "s"))
+        
+        if(Tog){
+            E:egpColor(5,vec(200,0,0))
+        }else{
+            E:egpColor(5,Color)
+        }
+        
+       
+    
+    
+    }else{
+        T = 0
+        Frac = 1
+         E:egpSetText(6,"REL:")
+        Reloading = 0
+        E:egpColor(5,Color)
+    }
+    
+    if(changed(Reloading)&!Reloading){
+        holoEntity(randint(1,10)):soundPlay(1,0,"buttons/blip2.wav")
+    }
+    
+    E:egpSize(11,vec2(S:x()*0.0475 * Frac,S:y()*0.011))
+    E:egpPos(11,BarBase - vec2((1-Frac)*BarBase:x()*0.0275,0))
+
+
+
+}
+
+E:egpSetText(1,"MPH: " + toString(floor(Speed)))
+
+timer("check",5000)
+
+if(clk("check")){
+    Fuel = 0
+    
+    for(I=1,Tanks:count()){
+        
+        Fuel += Tanks[I,entity]:acfFuel()
+        
+        
+    }
+    
+}
+
+if(dupefinished()){
+    reset()
+}
+
+if(Tanks:count()>0){
+    E:egpSetText(2,TN + ": " + toString(round((Fuel / TotFuel)*100)) + "%")
+    Spread = 100
+    }else{
+    E:egpSetText(2,"NO FUEL TANKS")
+    }
+    E:egpSetText(3,"GEAR: " + toString(Gears[1,entity]:acfGear()))
+
+
+
+

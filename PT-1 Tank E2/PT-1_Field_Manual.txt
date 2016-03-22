@@ -1,0 +1,155 @@
+@name PT-1 Field Manual
+@model models/props_lab/binderredlabel.mdl
+
+#[
+
+
+Welcome to your new PT-1 Main Battle Tank! Here's a quick overview of the vehicle.
+
+Specifications:
+----------------------------------------------------------------------------------------------
+Role:                MBT
+Mass:                45,000 KG
+Propcount:           75
+Server usage (In):   550-650in, 300-400 lowlag variant
+Physical mass:       29%
+Armament:            100mm Cannon, 24 rnds AP, 9 HE
+Secondary:           2x7.62mm MG , 917 rnds
+Tertiary:            4x 40mm Smoke discharger
+Powerplant:          19L V8 Diesel, Fueled
+Fuel capacity:       36 gal / 136L
+Drivetrain:          6 speed forward/reverse, neutral steer capable
+Climbing angle:      55 degrees from vertical
+Top speed:           42 mph / 67 kph
+
+
+
+Armor type(s):       Steel plate, non-composite
+Armor, Front hull:   120-200mm
+Armor, Side hull:    30-60mm
+Armor, rear hull:    30mm
+Armor, roof:         20-40mm
+Armor, turret front: 125-300mm
+Armor, turret side:  30mm
+Armor, turret rear:  30mm
+
+Elev/depression:     30/10 degrees
+
+
+Design:
+----------------------------------------------------------------------------------------------
+This is a Main Battle Tank. Its most useful role is to combat other tanks. It won't do you much good against aircraft,
+and the armor is too thin to deal with close quarters infantry attack. The PT-1 was designed to be mobile, and
+strike quickly, and fight from a distance, so protection was traded for mobility.
+
+The PT-1's structure consists of the bottom hull plate and both side armor plates of the hull for structure. 
+The gun is rope-turreted to the side armor plates for rigidity. If the baseplate is lost the tank will still function
+but will not move.
+
+
+
+
+
+Tips:
+----------------------------------------------------------------------------------------------
+You can hold the brake to rev the engine and dump the clutch.
+
+The PT-1 is very agile, it may drift on occasion. You can make it slide by letting off the throttle and turning hard.
+
+Keep your sides away from the enemy, they are weak!
+
+Don't be afraid to drive in reverse often. It will go as fast in reverse as it does forwards.
+
+Smoke is semiautomatic, each press fires 1 launcher out of four.
+
+Be careful when fighting on uneven terrain. Stopping and firing from a downslope makes your armor less effective
+and a greater chance of being shot through the roof.
+
+Hull down whenever you can. The PT-1 can depress the gun to 10 degrees, quite good for shooting over hills.
+
+When the tank runs out of fuel, it will continue to drive, but with 25% less engine output. It may not shift gears properly.
+
+Please don't claim this vehicle as your own! I put a lot of effort into my first vehicle release since 2009.
+
+
+Notes: 
+----------------------------------------------------------------------------------------------
+If the server is loaded, please use the low lag variant! The wheels may appear to not move, but they do.
+They are parented, this reduces server lag immensely.
+
+
+Controls:
+----------------------------------------------------------------------------------------------
+
+Movement:      WASD
+Brake:         Jump
+Turret Lock:   Flashlight
+Change ammo:   R
+Primary:       M1
+Secondary:     M2
+Pop smoke:     Alt
+Camera:        Shift
+Zoom:          Crouch
+Cam distance:  Scroll wheel
+Fade roof:     / (numpad)
+
+
+
+
+
+Credits:
+----------------------------------------------------------------------------------------------
+Build/Design:           Karbine
+
+E2:
+Turret control:         Kickasskyle, Stevejobs, Fervidusletum, Karbine
+Mobility control:       Kickasskyle, Karbine
+Auxilliary functions:   Kickasskyle, Fervidusletum, Karbine
+Display:                Thomas TTC, Tibbles, Karbine
+
+Due to the messy nature of the chips used, I have them hidden. The tank is for release, not the electronics.
+
+
+
+
+
+Requirements:
+----------------------------------------------------------------------------------------------
+
+ACF                     https://github.com/nrlulz/ACF/
+Sprops                  https://steamcommunity.com/sharedfiles/filedetails/?id=173482196
+Wiremod                 https://steamcommunity.com/sharedfiles/filedetails/?id=160250458
+Advanced Ballsocket     https://steamcommunity.com/sharedfiles/filedetails/?id=107257490
+Visual Clip             https://steamcommunity.com/sharedfiles/filedetails/?id=238138995
+Weight tool             https://steamcommunity.com/sharedfiles/filedetails/?id=104480013
+Fading door (optional)  https://steamcommunity.com/sharedfiles/filedetails/?id=407236638
+Nocollide All Multi     http://steamcommunity.com/sharedfiles/filedetails/?id=104482426
+Makespherical           http://steamcommunity.com/sharedfiles/filedetails/?id=136318146
+TF2                     durr
+CSS                     hurr
+Brain                   ???.jpg
+
+Troubleshooting:
+----------------------------------------------------------------------------------------------
+When you lack one of these mods, this is what will happen:
+
+ACF                      Errors, PT-1 will not operate                  
+Sprops                   Complete ball of fucking errors
+Wiremod                  PT-1 will not function
+Advanced Ballsocket      Everything freaking out and spinning
+Visual Clip              Tank looks retarded
+Weight tool              PT-1 will not function, no armor, blackholing
+Fading door (optional)   Just can't see innnards (will work without this tool)
+Nocollide All Multi      Big clusterfuck colliding mess
+Makespherical            Sinking wheels/low mobility
+TF2                      Errors
+CSS                      Errors
+Brain                    ERROR
+
+If you don't have a crosshair, just get in the seat again
+
+
+
+]#
+
+

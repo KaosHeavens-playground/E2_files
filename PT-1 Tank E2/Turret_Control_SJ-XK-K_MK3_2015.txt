@@ -1,0 +1,205 @@
+@name Turret Control SJ-XK-K MK3 2015
+@inputs [Gun Chair Hull]:entity [Active]:number Lock 
+@outputs [Position]:vector [Angle]:angle FOV GL FL AP HE Scroll CamParent:entity 
+@persist [Inertia Hold]:angle [Elevation Depression Yaw RotateSpeed ]:number Zoom FLIR AmmoSwitch Ready In Out
+@persist Force ForceON Damping DampingON Aon Inc APloaded HEloaded HoloDist ExDist User:entity PositionOffset:vector
+@persist  ZoomFOV DefaultFOV Scroll
+@persist Position:vector Angle:angle
+
+# E2 must be facing forwards relative to the chassis at all times
+# Cam Controller required
+#Original chip by Steve, modified by Karbine
+
+
+if (duped()|dupefinished()) { reset() }
+if (first()) {
+    
+    rangerFilter(Gun)
+    rangerFilter(entity():getConstraints())
+    rangerPersist(1)
+    
+    #cam/holo parent
+    holoCreate(1)
+    holoAlpha(1,0)
+    holoParent(1,Hull) #Chair
+    CamParent = holoEntity(1)
+    Players = players()
+    
+    #gun angle holo
+    holoCreate(2)
+    holoModel(2,"cone")
+    holoPos(2,CamParent:toWorld(vec(10,0,0)))
+    holoAng(2,ang(90,0,0))
+    
+    holoMaterial(2,"models/wireframe")
+    holoColor(2,vec(0,255,0),0)
+    holoParent(2,CamParent)
+    holoVisible(2,Players,0)
+    
+    #hull angle holo
+    holoCreate(3)
+    holoPos(3,CamParent:toWorld(vec(10,0,-0.4)))
+    holoAng(3,ang(90,0,0))
+    holoModel(3,"cone")
+    holoScale(3,vec(0.025,0.025,0.05))
+    holoMaterial(3,"models/wireframe")
+    holoColor(3,vec(255,0,0),0)
+    #holoRenderFX(3,1)
+    holoParent(3,CamParent)
+    holoVisible(3,Players,0)
+
+    
+}
+
+interval(20)
+
+
+if ( changed(Active) ) {
+
+#Variables
+    #Exclude
+        ExDist = 1000           #Excludes the aim to avoid hitting close enemy objects
+    #FOV
+        DefaultFOV = 77.5
+        ZoomFOV = 15
+    #Angle Limitations
+        Elevation     = 20
+        Depression    = 10
+        Yaw           = 361
+    #Holo Excluding Distance
+        XHExclude     = 1000
+    #Force & Damping Variables
+        ForceON       = 350
+        DampingON     = 30
+    #Gun Varibles
+        RotateSpeed   = 125 # Degrees per second
+    #Camo Offset
+        PositionOffset= vec(0,0,75) #cam position, change according to your own
+
+    rangerFilter(Gun)
+    rangerFilter(entity():getConstraints())
+    rangerFilter(players())
+    rangerPersist(1)
+    
+    RotateSpeed /= 20
+    Elevation*=-1
+    Inertia = shiftL(ang(Gun:inertia()))
+    Hold = entity():toLocal(Gun:angles())
+    
+    Players = players()
+    Driver = Chair:driver()
+    holoVisible(2,Players,0)
+    holoVisible(3,Players,0)
+    if (Driver) {
+        holoVisible(2,Driver,1)
+        holoVisible(3,Driver,1)
+    }
+
+    
+} 
+elseif( Active ) {
+#Holowork
+    Angle = Chair:toLocal(Chair:driver():eyeAngles())
+    Position = Hull:toWorld(PositionOffset)
+    
+    holoPos(1,Position)
+    holoAng(1,Angle)
+    holoAng(3,Hull:angles() + ang(90,0,0))
+    
+    Distant = rangerOffset(999999,Gun:attachmentPos("muzzle"),Gun:forward()):pos()
+    ViewToDistant = Distant - Position
+    holoPos(2,CamParent:pos()+ViewToDistant:normalized()*250)
+    holoAng(2,ViewToDistant:toAngle()+ang(90,0,0))
+
+#Gunwork
+    Offset = Angle:forward()*ExDist
+    GunAng = (rangerOffset(99999,(Position+Offset),Angle:forward()):pos() - Gun:pos()):toAngle()  
+    
+    #Time to split this shit
+    GunC1 = (Gun:toWorld(clamp(Gun:toLocal(GunAng),ang(-RotateSpeed),ang(RotateSpeed))))
+    GunC2 = clamp(entity():toLocal(GunC1),ang(Elevation,-Yaw,0),ang(Depression,Yaw,0))
+    GunC3 = entity():toWorld(GunC2)
+    GunC4 = Gun:toLocal(GunC3)
+    GunC5 = (GunC4 * Force - Gun:angVel() * Damping) * Inertia
+        
+    Gun:applyAngForce(GunC5*ang(1,1,0)) 
+
+#Toggles
+if(Lock & ~Lock) {GL = !GL}
+if(FLIR & ~FLIR) {FL = !FL}
+if(Zoom) {FOV = ZoomFOV} else {FOV = DefaultFOV}
+if(AmmoSwitch & ~AmmoSwitch) {Aon = !Aon}
+    
+  
+}
+else{ 
+    GunAng = entity():toWorld(Hold) 
+    GL = 1
+    }
+
+
+
+if(GL)
+ {
+    Force = 0
+    Damping = 0
+}
+if(!GL)
+ {
+    Force = ForceON
+    Damping = DampingON
+}
+
+#Ready Hint
+if(changed(Ready)&Ready)
+{
+    #ambient/levels/citadel/advisor_lift.wav  futury reload sound
+    Gun:soundPlay(4,1,"ambient/levels/outland/ol11_blastdoorlatch.wav")
+    Chair:hintDriver("Loaded!", 10)
+}
+
+# TWO TYPE AMMO SELECTION
+if(changed(AmmoSwitch)&AmmoSwitch)
+{
+    Inc++
+}
+if(Inc > 1) {Inc = 0}
+    if(changed(APloaded)&APloaded) 
+    {
+        Chair:hintDriver("AP next load", 5)
+    }
+        
+    if(Inc==0)
+    {
+        APloaded = 1
+        AP = 1
+        HE = 0
+        APHE = 0
+    }
+    if(changed(Inc)&Inc&Inc==1)
+    {
+        Chair:hintDriver("HE next load", 5)
+        APloaded = 0
+        AP = 0
+        HE = 1
+        APHE = 0
+    }
+
+#Holo Stuff
+
+if(!Active|Zoom) {Scroll = 0}
+
+
+if(Scroll == 0) {Scroll = 0}
+if(changed(In)&In)
+{
+    Scroll = clamp(Scroll+50,0,99999)
+}
+
+
+if(changed(Out)&Out)
+{
+    Scroll = clamp(Scroll-50,0,99999)
+}
+
+holoScale(2,vec(0.25+(Scroll/500),0.25+(Scroll/500),0.05+(Scroll/500)))

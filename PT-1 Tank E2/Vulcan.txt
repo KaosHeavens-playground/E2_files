@@ -1,0 +1,27 @@
+@name Vulcan
+@inputs Fire R1 R2
+@outputs Gun1 Gun2
+@persist Time
+@trigger 
+interval(20)
+
+
+
+#When fire is 1, Everything Inside  the {} Happens.
+if(Fire){
+    Time = Time+1
+    if(Time == 2) {Time = 0}
+    if(Time == 0) {Gun1 = 1} else {Gun1 = 0}
+    if(Time == 1) {Gun2 = 1} else {Gun2 = 0}
+
+
+
+}
+
+if(Fire == 0){
+    Time = 0
+    Gun1 = 0
+    Gun2 = 0
+
+    }
+

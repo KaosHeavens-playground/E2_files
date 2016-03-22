@@ -1,0 +1,257 @@
+@name Auxilliary Functions V2
+@inputs [Gun Chair Hull HullIdc]:entity [Active CamToggle Zoom Zoom2]:number In Out AmmoSwitch W S A D Handbrake Fire Ready
+@outputs CamParent:entity [Position]:vector [Angle]:angle Scroll Distance Pbrake AP HE FL Unload Time Time2 WASD FireGL FOV Loadsnd
+@persist TPV DefaultFOV ZoomFOV [GunCamOffset ThirdPersonOffset]:vector Scroll Aon Inc APloaded HEloaded HB Time Timer WASD 
+@persist TrackPitch TPitch TreadVolume TreadPitch Speed Time2
+
+# By Fervidusletum
+WASD = W|S|A|D
+
+
+TreadPitch                  = 4         #Multiplier for treadpitch, used with speed.
+TreadVolume =    (Speed+10) / 5         #Above, but volume.
+
+
+if (duped()|dupefinished()) { reset() }
+if (first()) {
+    
+
+
+
+    
+    GunCamOffset = vec(-8,-25,-55)
+    ThirdPersonOffset = vec(0,0,-150)
+
+    rangerFilter(Gun)
+    rangerFilter(entity():getConstraints())
+    rangerPersist(1)
+    
+    #cam/holo parent
+    holoCreate(1)
+    holoAlpha(1,0)
+    holoParent(1,Hull) #Chair
+    CamParent = holoEntity(1)
+    Players = players()
+    
+    #gun angle holo
+    holoCreate(2)
+    holoModel(2,"cone")
+    holoPos(2,CamParent:toWorld(vec(10,0,0)))
+    holoAng(2,ang(90,0,0))
+    
+    holoMaterial(2,"models/wireframe")
+    holoColor(2,vec(255,0,0),0)
+    holoParent(2,CamParent)
+    holoVisible(2,Players,0)
+    
+    #hull angle holo
+    holoCreate(3)
+    holoPos(3,CamParent:toWorld(vec(5,0,-2)))
+    holoAng(3,ang(90,0,0))
+    holoModel(3,"cone")
+
+    holoMaterial(3,"models/wireframe")
+    holoColor(3,vec(255,255,255),100)
+    #holoRenderFX(3,1)
+    holoParent(3,CamParent)
+    holoVisible(3,Players,0)
+    
+
+
+}
+
+interval(25)
+
+if (changed(CamToggle)&CamToggle) { TPV = !TPV }
+if(Active)
+{
+    if(Fire) {FireGL == 1}
+    if(!Fire) {!FireGL == 0}
+}
+
+
+if (changed(Chair:driver())) {
+    Players = players()
+    Driver = Chair:driver()
+    holoVisible(2,Players,0)
+    holoVisible(3,Players,0)
+    if (Driver) {
+        holoVisible(2,Driver,1)
+        holoVisible(3,Driver,1)
+    }
+}
+
+
+if(Zoom2)
+{
+    FOV = 10
+}
+if(!Zoom2)
+{
+    FOV = 90
+}
+
+
+if ( changed(Active) ) {
+
+} 
+
+if( Active ) {
+    Angle = Chair:toLocal(Chair:driver():eyeAngles())
+    Position = Hull:toWorld(TPV ? ThirdPersonOffset : GunCamOffset)
+    
+    holoPos(1,Position)
+    holoAng(1,Angle)
+    holoAng(3,HullIdc:angles() + ang(90,0,0))
+    
+    Distant = rangerOffset(9999999999,Gun:attachmentPos("muzzle"),Gun:forward()):pos()
+    ViewToDistant = Distant - Position
+    holoPos(2,CamParent:pos()+ViewToDistant:normalized()*250)
+    holoAng(2,ViewToDistant:toAngle()+ang(90,0,0))
+}
+
+    if(!Active) {Scroll = 0}
+
+
+if(Scroll == 0) {Scroll = 0}
+if(changed(In)&In)
+{
+    Scroll = Scroll-0.1
+}
+
+
+if(changed(Out)&Out)
+{
+    Scroll = Scroll+0.1
+}
+holoScale(2,vec(2+Scroll,2+Scroll,0.05+Scroll))
+holoScale(3,vec(0.005,0.1,0.25))
+
+
+if(TPV)
+{
+    Distance = Scroll*1000+350
+}
+if(!TPV)
+{
+    Distance = Scroll*1000
+}
+
+
+
+if(Distance <= 0) {Distance = 0}
+
+
+if(AmmoSwitch & ~AmmoSwitch)
+{
+    Aon = !Aon
+    Timer = !Timer
+}
+
+if(Timer)
+{
+    Time=Time+1
+    
+}
+if(Time == 10)
+{
+    Unload = 1
+    
+}
+if(Time == 15)
+{
+    Unload = 0
+    Timer = 0
+    
+}
+if(Timer == 0)
+{
+    Time = 0
+}
+
+
+if(!Ready) {Time2=Time2+1}
+if(Ready) {
+    Time2 = 0
+    Loadsnd = 0
+    }
+
+if(Time2 == 25) {Loadsnd = 1}
+
+
+
+# TWO TYPE AMMO SELECTION
+if(changed(AmmoSwitch)&AmmoSwitch)
+{
+    Inc++
+}
+if(Inc > 1) {Inc = 0}
+    if(changed(APloaded)&APloaded) 
+    {
+        Chair:hintDriver("HEAT next load", 5)
+    }
+        
+    if(Inc==0)
+    {
+        APloaded = 1
+        AP = 1
+        HE = 0
+        FL = 0
+    }
+    if(changed(Inc)&Inc&Inc==1)
+    {
+        Chair:hintDriver("FL next load", 5)
+        APloaded = 0
+        AP = 0
+        HE = 1
+        FL = 0
+    }
+   #[     if(changed(Inc)&Inc&Inc==2)
+    {
+        Chair:hintDriver("APHE next load", 5)
+        APloaded = 0
+        AP = 0
+        HE = 0
+        FL = 1
+    }
+    ]#
+   
+if(Handbrake & ~Handbrake) {HB = !HB}
+
+if(HB)
+{
+    Pbrake = 1-WASD
+}else{Pbrake = 0} 
+if(CamToggle) {Scroll = 0}
+
+
+
+
+
+
+Speed = HullIdc:vel():length() / 17.6
+
+
+
+if(first()|dupefinished()){
+    HullIdc:soundPlay(1,0,"acf_extra/tankfx/tracks_composite.wav")
+}
+    TPitch = (Speed)*TreadPitch
+    TrackPitch = clamp(TPitch,TrackPitch-20,TrackPitch+20)
+
+    soundPitch(1,TrackPitch) 
+    soundVolume(1,TreadVolume)
+
+
+
+
+if(changed(Active)&Active) {Chair:printDriver("----------------------------------------------")}
+if(changed(Active)&Active) {Chair:printDriver("PT-1 45t MBT by Karbine")}
+if(changed(Active)&Active) {Chair:printDriver("This is an MBT of 45 tons. Mobility is good, armor is not. Keep moving!")}
+if(changed(Active)&Active) {Chair:printDriver("WASD for movement. S is reverse. Jump is brake.")}
+if(changed(Active)&Active) {Chair:printDriver("Flashlight unlocks/locks the turret. M1/2 for guns, Alt to discharge smoke.")}
+if(changed(Active)&Active) {Chair:printDriver("R changes the ammo type, Shift is camera, and crouch for zoom.")}
+if(changed(Active)&Active) {Chair:printDriver("Please, if the server is loaded and struggling, use the low lag variant!")}
+if(changed(Active)&Active) {Chair:printDriver("If the red/white circle Xhair does not show, get out and back in the tank again.")}
+if(changed(Active)&Active) {Chair:printDriver("----------------------------------------------")}
+

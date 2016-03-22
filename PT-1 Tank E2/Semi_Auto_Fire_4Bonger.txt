@@ -1,0 +1,50 @@
+@name Semi Auto Fire 4Bonger
+@inputs Fire
+@outputs Fire1 Fire2 Fire3 Fire4
+@persist Fire1 Fire2 Fire3 Fire4 Group
+@trigger 
+
+interval(1000)
+
+
+#Start up loading---------------------
+if (dupefinished()|duped()|first()){
+Fire1 = Fire2 = Fire3 = Fire4 = 1
+Group = 1
+timer("Off",250)
+}
+
+if(clk("Off")){
+Fire1 = Fire2 = Fire3 = Fire4 = 0   
+}
+#-------------------------------------
+
+if(changed(Fire) & !Fire){
+
+    if(Group == 1){
+        Fire1 = 1
+        timer("Off",250)
+    }
+    
+    if(Group == 2){
+        Fire2 = 1
+        timer("Off",250)
+    }
+    
+    if(Group == 3){
+        Fire3 = 1
+        timer("Off",250)
+    }
+    
+    if(Group == 4){
+        Fire4 = 1
+        timer("Off",250)
+    }
+
+    Group++
+    
+    if(Group == 5){Group = 1}
+    
+}
+
+

@@ -1,0 +1,973 @@
+@name Tank Drivetrain Management 2015
+@inputs [WRR WRL Pod]:wirelink RPM1 RPM2 Base:entity Base2:entity Base3:entity Exfueltank:entity Exfueltank2:entity GL Speedo WEP TotalFuelIn Wirepod:entity Button Exfuel1 Exfuel2
+@outputs [WRR WRL ]:wirelink Throttle Speed TrackLock LL LR  DCT  LL2 LR2 Gear2 WTR WTL DCT2 DCTL DCTR GearL2 GearR2 ClutchL ClutchR BrakeL BrakeR Ranger Mstab Infuel EngActive
+#Debugs
+#@outputs TClutch CO Ranger [StabForcef StabForceb]:vector StabMul
+#Redundant Outputs/Inputs
+#Inputs   
+#Outputs    Enabled   BrakeL BrakeR ClutchR ClutchL GearR GearL Ranger HoldGear Cooldown Stabilizer ForcePOS ForceDIR
+
+@persist GearR GearL BrakeL BrakeR ClutchR ClutchL Speedadd StabTurLocked StabTurUnLocked 
+#Upper code persists
+@persist CO BrakeLeft BrakeRight TrackLock ActiveNot BM Clutchsmoother BrakeTurLocked BrakeTurUnlocked OffThrottleBrake Enabled MinRPMClutch WEPAct FUELACTIVE 
+#Gearbox persists
+@persist R CD CDTimer GearA Gear GearTB Reverse ReverseWait GearTB2 GearA2 TRPMAd Turning GearCooldown OffCooldown OffThrottleCD SW Off DCT HoldGear HoldGO RGHoldGear
+@persist HoldGearTimer TrackPitch DCT2 LatchSpeed GearR2 GearL2 DCTL DCTR Brakecut Clutchcut DCTON AD Latchm
+#Int Stabiliser persists
+@persist [StabForcef StabForceb]:vector StabMul LatchSpeed2 Rev Limiter Hatch 
+#@trigger [WLClutchR WLClutchL Pod]:wirelink Base:entity Base2:entity Base3:entity GL Speedo Ranger WEP TotalFuelIn Wirepod:entity
+@trigger none
+
+interval(75)
+ if(first()|dupefinished()){
+    reset()
+}
+#[
+------------------------------------------
+MK IV Version K1.
+------------------------------------------
+
+Kickasskyle & Karbine's tank mobility chip for 2014.  This chip has been completely rewritten save for the gearbox code to be far cleaner and easier than the previous generation.
+This is the fourth generation mobility chip from Kyle & Karbine. This chip only covers movement of the vehicle. It is an ongoing WIP.
+
+How to use:
+Chip's direction does not matter.
+Wire shit. RPM goes to the engine's RPM output.
+Weld latch your drive sprockets to the base of your stuff (1 for each sprocket). Wire them to LL and LR (latch left/right) This is not always required, only do it if you have sphere wheels/your turning at low speed is shit. LL/LR serve as the parking brake, too.
+Weld latch one drive wheel to the other, and wire the latch to TrackLock. This keeps the vehicle moving straight.
+The cooldown variable is important. Sometimes your gearbox will shift gears too quickly. However, sometimes it won't downshift fast enough.
+If you're stuck revving just the engine, let off the throttle for a second or two so the automatic can catch up.
+When you hold Alt, this will hold the current gear it's in. This is useful for creeping or climbing.
+Be careful with OffThrottleCD; if it makes GearCooldown too low, gearbox response when letting off and getting back on the throttle will be poor.
+
+Sometimes you may need to reverse your turning keys, and or LL/LR's wiring from the latches to the chip. Sometimes this happens, just change the order of A/D in the list of Wirelink keys.
+
+
+Notable changes from previous generation: 
+Version K:
+- Sounds into Driving chip
+- Ranger added for No grav thruster
+- Segmentation IFs added to reduce impact if unused sections
+- Wirelink Clutches
+- Currently Dual Clutch Only
+
+
+-Simpler code (relatively)
+-Cleaner
+-More documentation
+-Wirelink
+-A FUCKING PARKING BRAKE
+-Gear hold function for creeping/climbing (IT ACTUALLY WORKS NOW.)
+
+Changelog (Mk I > MkII)
+
+-Fixed HoldGear not working in first gear
+-Applied a better clutch control system (It's actually the previous gen chip's type)
+-More customization of handling
+-More documentation
+-----------------------------------------------------------------------------
+Notes:
+Thrust can be ignored. It is for a ranger chip I place in the front of my tanks to detect if the vehicle is airborne, then fires thrust downwards to counteract funky gun gravity.
+Stabilizer is important. Place a speedometer sideways (so the top points sideways) and a sideways thruster (with 1 mul) at the back of the tank. Weld them both to the base, then parent. make sure your thruster isn't set to 0.1 weight
+This will help handling if your tank is too spinny. Handling is different when the gun is locked and unlocked (resistance), this has been accounted for.
+
+-----------------------------------------------------------------------------
+CHANGES MKII V1 > V2
+Added ability to rev engine when holding handbrake
+Added stabilizer support
+-----------------------------------------------------------------------------
+]#
+
+
+
+#WIRELINK INPUTS
+#-----------------------------------------------------------------------------
+
+
+W = Pod["W",number]
+
+D = Pod["D",number]
+
+S = Pod["S",number]
+
+A = Pod["A",number]
+
+Handbrake = Pod["Space",number]
+
+Active = Pod["Active",number]
+
+HoldG = Pod["Alt",number]
+
+
+#-----------------------------------------------------------------------------
+#WIRELINK OUTPUTS
+#[
+WFL["Left Clutch",number] = ClutchL
+WFL["Left Brake",number] = BrakeL
+WFL["Right Clutch",number] = ClutchL
+WFL["Right Brake",number] = BrakeL
+WFL["Gear",number] = GearL2
+
+WFR["Right Clutch",number] = ClutchR
+WFR["Right Brake",number] = BrakeR
+WFR["Left Clutch",number] = ClutchR
+WFR["Left Brake",number] = BrakeR
+WFR["Gear",number] = GearR2
+]#
+
+WRL["Left Clutch",number] = ClutchL
+WRL["Left Brake",number] = BrakeL
+WRL["Right Clutch",number] = ClutchL
+WRL["Right Brake",number] = BrakeL
+WRL["Gear",number] = GearL2
+
+WRR["Right Clutch",number] = ClutchR
+WRR["Right Brake",number] = BrakeR
+WRR["Left Clutch",number] = ClutchR
+WRR["Left Brake",number] = BrakeR
+WRR["Gear",number] = GearR2
+
+
+if(Speed < LatchSpeed)
+{
+    DCTON = 1
+}
+if(Speed > LatchSpeed)
+{
+    DCTON = 0
+}
+
+if(DCTON)
+{
+   Latchm =0 
+if(A)
+{
+    GearL2 = 2-Rev
+    GearR2 = 1+Rev
+}
+if(D)
+{
+    GearL2 = 1+Rev
+    GearR2 = 2-Rev
+}
+if(!AD)
+{
+    GearL2 = 1+Rev
+    GearR2 = 1+Rev
+}
+if(S)
+{
+    Rev = 1
+}else{
+    Rev = 0
+}
+
+}
+if(!DCTON)
+{
+    Latchm = 1
+    if(W)
+    {
+        GearL2 = 1
+        GearR2 = 1
+    }
+    if(S)
+    {
+        GearL2 = 2
+        GearR2 = 2
+    }
+}
+
+
+
+#[
+if(S)
+{
+    Latchm = 1
+}
+]#
+#[
+WLClutchL["Clutch",number] = ClutchL
+WLClutchL["Brake",number] = BrakeL
+WLClutchL["Gear",number] = Gear2
+
+WLClutchR["Clutch",number] = ClutchR
+WLClutchR["Brake",number] = BrakeR
+WLClutchR["Gear",number] = GearR2
+]#
+
+
+
+#if(RPM1 == 3700) {Throttle = 0}
+#------------------------------------------------------------------------------
+#Misc Input Additions for IFs
+AD = A|D
+WS = W|S
+WSandDCT = W|S|DCT 
+WASD = clamp(W+A+S+D,0,1)
+GearHold = RGHoldGear+HoldGear+HoldGearTimer
+#------------------------------------------------------------------------------
+#[
+    if(Speed<10)
+    {
+        GearR2 = (1+Rev)+DCTL
+        GearL2 = (1+Rev)+DCTR
+    }
+    ]#
+    
+
+        if(Speed<7)
+    {
+        Gear2 = 1
+    }
+    
+    if(Speed>7)
+    {
+        Gear2 = 2
+    }
+    
+    
+    if(Speed>11)
+    {
+        Gear2 = 3
+    }
+    
+    if(Speed>20)
+    {
+        Gear2= 4
+    }
+    if(Speed>25)
+    {
+        Gear2= 5
+    }
+        if(Speed>33)
+    {
+        Gear2= 6
+    }
+
+
+    #[
+Karbine: 8
+Karbine: 12
+Karbine: 18
+Karbine: 27
+
+]#
+
+
+
+ #[   
+
+    if(A)
+        { 
+            DCTL = 0
+            DCTR = 4
+
+            Brakecut = 0
+            Clutchcut = 0
+        }
+    if(D)
+        { 
+            DCTL = 4
+            DCTR = 0
+
+            Brakecut = 0
+            Clutchcut = 0
+        }
+        
+    if(!A&!D)
+    {
+        DCTL = 1
+        DCTR = 1
+        Brakecut = 1
+        Clutchcut = 1
+    }
+        
+
+if(Speed>5)
+{
+    DCTL = 1
+    DCTR = 1
+    Brakecut = 1
+    Clutchcut = 1
+}
+]#
+    DCTL = 1
+    DCTR = 1
+    
+
+    if(DCTON)
+    {
+        Brakecut = 0
+        Clutchcut = 0
+    }
+      if(!DCTON)
+    {
+        Brakecut = 1
+        Clutchcut = 1
+    }               
+
+#[
+if(S)
+{
+    Rev = 4
+}
+if(!S)
+{
+    Rev = 0
+}
+]#
+
+
+if(W)
+{
+    WTL = 1
+    WTR = 1
+}
+if(S)
+{
+    WTL = -1
+    WTR = -1
+}
+if(A)
+{
+    WTL = 0
+    WTR = 1
+}
+if(D)
+{
+    WTL = 1
+    WTR = 0
+}
+if(!WASD)
+{
+    WTR = 0
+    WTL = 0
+}
+
+if(GL) {Mstab = Speedo * StabTurLocked}
+if(!GL) {Mstab = Speedo * StabTurUnLocked}
+
+
+EngActive = Active
+
+if(Exfuel1+Exfuel2 == 0) {
+    Infuel = 1
+    EngActive = 1+Active+W
+    }
+if(!Exfueltank&!Exfueltank2){
+    Infuel = 1
+    EngActive = 1+Active+W
+    }
+#Variables
+#------------------------------------------------------------------------------
+
+BrakeLeft        = clamp((BM  - Speed * 0.8),5,200)*Brakecut #- Off   #Be careful with brakes. Typically you only need between 5 and 50.
+BrakeRight       = clamp((BM  - Speed * 0.8),5,200)*Brakecut #- Off   #The clamp is simple. BM is the BrakeTurLocked/Unlocked variable.
+                                                        #Increase what Speed is divided by to scale how quickly the brakes get shut off at speed, so it will just steer on clutches, thus reducing drag during turning.
+                                                        #The next variable is the minimum braking amount. Your tank might not be able to steer on clutch only at speed. Tank length and grip dictates this.
+                                                        #The final variable is the maximum. You don't really need to mess with this.
+BrakeTurLocked   = 60          #Brake amount for turret locked (if your turret control doesn't use mine, just use BrakeTurLocked)
+BrakeTurUnlocked = 35        #Brake amount for turret unlocked (Tank will steer faster without the resistance of the gun being locked, this is to correct that)
+StabTurLocked    = 0      #Stabiliser Multipler for the locked turret (mostly stops tanks spinning out at high speed)
+StabTurUnLocked  = 5        #Stabiliser Multipler for the unlocked turret
+LatchSpeed       = 8
+LatchSpeed2      = 12       #Speed in which the weld-latch steering brakes shut off. LL and LR are latch left/right.
+
+MinRPM           = 600    #Engine speed in which gearbox downshifts. Set this slightly higher than engine's lower powerband. You'll have to fiddle with this and your gearing so your vehicle doesn't bog down when it shifts.
+MaxRPM           = 9999     #Engine speed in which gearbox upshifts. Set this to the engine's upper powerband or slightly lower than redline (like 50rpm below)
+
+MinRPMClutch     = 600  #Engine RPM the clutch tries to match for starting off.        
+HandbrakeTimeout = 500     #Amount of time in milliseconds that the gears cannot be shifted after the handbrake is letoff
+
+ClutchSmoother   = 0.05      #Smoothes clutch from startoffs
+OffthrottleBrake = 5  * Brakecut     #Braking force applied when you let off W/S (It's to be a light brake)
+
+Gears            = array(1,2,3,4,5,6) #Forward gears.
+ReverseGears     = array(7,8)     #Reverse gears.
+TurningGears     = array(1,6)     #Two Turning Gears. Ignore if unused. Follow Format (Forward,Reverse). You usually set these gears as first forward gear and first reverse gear
+GearCooldown     = 25          #Cooldown between gear changes. Sometimes this needs to be high or it shifts too fast. Between 50 and 200 seems to work.
+OffThrottleCD    = 9999             #Automatic uses this variable to speed up the cooldown when the throttle is let off. It subtracts this from GearCooldown.
+TurnRPM          = 0           #I don't even know what this does
+
+DualClutchTurning   = 0            #Enables dual clutch turning for 2 engines, You should comment out the RPM inputs and GEAR outputs up top based upon this.
+SingleEngine        = 1                  #Deals with RPM Values in the IF statement within the next section
+#[If you are using spot turning mode, you need to use two engines and uncomment the line below. Remove EngineRPM from the input list
+and replace it with RPM1 and RPM2; wire each RPM input to an engine
+]#
+
+WEPEnabled              = 0         #Activates/Deactivates a section of the E2 that deals with "WEP" power aka toggled fuel usage.
+
+GRangerEnabled          = 0       #Toggles the creation of a ranger dealing with the gravity assisting thrust.
+GOffsetForce            = 0         #Uses the ranger inputs to deal with gravity assisting thrust.
+GForceMultiplierLocked  = 4000*8  #Multiplier for gravity assisting force turret locked
+GForceMultiplierUnlocked= 1800*8  #Multiplier for gravity assisting force turret unlocked
+
+IBStabiliser            = 0      #Enables the inbuilt turning stabiliser
+IBMul                   = 0         #Multiplier specifically for the inbuilt stabiliser, it is used with StabTur multipliers. Speed alt avaliable
+
+TreadPitch              = 6         #Multiplier for treadpitch, used with speed.
+TreadVolume =    (Speed+10) / 5         #Above, but volume.
+#------------------------------------------------------------------------------
+
+ if(Gear > 1) {MinRPMClutch = 0}
+
+
+
+
+
+
+    
+#Single Engine Changes
+#------------------------------------------------------------------------------
+if(SingleEngine){
+
+RPM = (RPM1)
+
+}else{
+
+RPM = (RPM1+ RPM2) / 2 
+if(A&WS){RPM = RPM1}
+if(D&WS){RPM = RPM2}
+}
+#------------------------------------------------------------------------------
+
+if(Button)
+{
+    Fade = 1
+    Hatch = 0
+}
+if(!Button)
+{
+    Fade = 0
+}
+
+if(Active)
+{
+    Hatch  = 1
+}
+
+
+#Ranger Ranger high voltage~
+#------------------------------------------------------------------------------
+if(GRangerEnabled){
+
+    if(first()|dupefinished()){
+        rangerPersist(1)
+        rangerFilter(entity():getConstraints())
+    }
+
+    RUp  =  5
+    RRig =  0
+    RFro =  -120
+
+    RangerDIR = -Base:up()
+    RangerPOS = Base:pos() + (Base:up() * RUp) +(Base:forward() * RFro) +(Base:right() * RRig)
+    #Debug
+    #holoCreate(5,RangerPOS,vec(0.5,0.5,0.5))
+    #holoModel(5,"cone")
+    
+    #The Actual Deal
+    Rang = rangerOffset(200, RangerPOS, RangerDIR)
+    Ranger = Rang:distance()
+}
+#------------------------------------------------------------------------------
+
+
+#Gravity Assisting Offset Force (Offsets the force, from the same location as the ranger)
+#------------------------------------------------------------------------------
+if(GOffsetForce&GRangerEnabled){
+    
+    RUp  =  2           #Make sure these values are the same as those in the Ranger section.
+    RRig =  0
+    RFro =  -200
+    
+#Active=1
+    if(Ranger > 27) {
+        ForceDIR = -Base:up()*(GL*GForceMultiplierLocked + !GL*GForceMultiplierUnlocked)
+        ForcePOS = Base:pos() + (Base:up() * RUp) +(Base:forward() * RFro) +(Base:right() * RRig)
+        Base:applyOffsetForce(ForceDIR,ForcePOS)
+        }
+}
+#------------------------------------------------------------------------------
+
+
+
+#Hold Gear Toggle
+#------------------------------------------------------------------------------
+if(!HoldG & HoldGO){
+    HoldGO = 0
+}
+
+if(HoldG & !HoldGO){
+    HoldGear = !HoldGear
+    HoldGO = 1
+}
+
+#Holdgear handbrake timer
+if(clk("HBTimeout")){
+        HoldGearTimer = 0
+    }
+
+if(Handbrake){
+    stoptimer("HBTimeout")
+    timer("HBTimeout",HandbrakeTimeout)
+    HoldGearTimer = 1
+    }
+
+#------------------------------------------------------------------------------
+
+
+
+
+#GL is Gun Latch; this alters braking force for turret being locked/unlocked (locked turret makes tank harder to turn) 
+#------------------------------------------------------------------------------
+if(GL)
+{
+    BM = BrakeTurLocked
+    Stabilizer = StabTurLocked * Speedo
+        #Gravity Ranger Stuff
+        if(GRangerEnabled){
+            if(Ranger > 33) {Thrust = GForceMultiplierLocked*Active
+                             RGHoldGear = 1
+                            }
+            if(Ranger < 33) {Thrust = 0
+                             RGHoldGear = 0
+                            }
+        }
+}else{
+    BM = BrakeTurUnlocked
+    Stabilizer = StabTurUnLocked * Speedo
+        #Gravity Ranger Stuff
+        if(GRangerEnabled){
+            if(Ranger > 28) {Thrust = GForceMultiplierUnlocked*Active
+                             RGHoldGear = 1
+                            }
+            if(Ranger < 28) {Thrust = 0
+                             RGHoldGear = 0
+                            }
+        }
+}
+#------------------------------------------------------------------------------
+
+
+
+#Inbuilt Stabiliser  
+#------------------------------------------------------------------------------
+if(IBStabiliser){
+    
+    
+    RFro =  165  #Back/Forward Offset
+        
+    #Apple Force
+    StabMul = (GL*StabTurLocked + !GL*StabTurUnLocked)*IBMul
+    
+    StabForcef = vec()
+    StabForceb = vec()
+    
+    StabForcef = StabForcef - (Base:angVel():yaw() * Base:right()) * StabMul
+    StabForceb = StabForceb - (Base:angVel():yaw() * Base:right() * -1) * StabMul
+    
+    
+    
+    Base:applyOffsetForce(Base:forward() * RFro, StabForcef )
+    Base:applyOffsetForce(Base:forward() * -RFro, StabForceb)
+ 
+}
+#------------------------------------------------------------------------------
+
+
+
+#Engine Throttle control
+#------------------------------------------------------------------------------
+if(Speed < LatchSpeed)
+{
+        Throttle = (100*WASD)*Limiter
+}
+if(Speed > LatchSpeed)
+{
+        Throttle = (100*WS)*Limiter
+}
+        if(RPM1 >= 10000000000)
+        {
+            Limiter = 0
+        }else{
+            Limiter = 1
+        }
+
+#------------------------------------------------------------------------------
+
+
+
+#RPM & ClutchControl    
+#------------------------------------------------------------------------------
+
+
+    #Clutch Override Override (not a typo)
+   
+
+    #RPM Monitor
+    if(RPM>MinRPMClutch){
+        TClutch = clamp(!WSandDCT,0,0.9) 
+    }else{
+        TClutch = 1
+    }
+
+
+    #ClutchSmoother
+    CO= clamp(TClutch,CO-ClutchSmoother,CO+ClutchSmoother)
+
+
+    if(Handbrake)
+    {
+        #Holding at the optimum RPM
+        if(RPM>MaxRPM-200){
+            Throttle = 50*WASD
+        }  
+        MinRPMClutch = 10000
+        MaxRPM = 10000
+        CO = 1
+    }else{
+        GroundBrake = 0
+
+    }
+#------------------------------------------------------------------------------
+
+
+
+
+
+
+#Steering; CO is Clutch Override
+#------------------------------------------------------------------------------
+
+if(Speed > 5) {CO = 0}
+if(A&!DCT)
+{
+
+    ClutchL = 1 * Clutchcut
+    BrakeL  = BrakeLeft
+    
+    ClutchR = CO *Clutchcut
+    BrakeR  = 0
+    
+}
+
+if(D&!DCT)
+{
+
+    ClutchL = CO *Clutchcut
+    BrakeL  = 0
+    
+    ClutchR = 1 * Clutchcut
+    BrakeR  = BrakeRight
+
+}
+
+if(!Turning)
+{
+    ClutchL = CO
+    BrakeL  = 0
+    
+    ClutchR = CO
+    BrakeR  = 0
+}
+#------------------------------------------------------------------------------
+
+
+
+
+#Braking/Rev control
+#------------------------------------------------------------------------------
+if(Handbrake|!WASD)
+{
+    Off = OffThrottleBrake
+    BrakeL = BrakeLeft
+    BrakeR = BrakeRight
+    RO = 1  #Rev Override (Not functioning yet)
+
+}else{
+RO = 0
+Off = 0
+}
+#------------------------------------------------------------------------------
+
+
+
+#Clutch control (the override) [Redundant apparently, left for historicals]
+#------------------------------------------------------------------------------
+#CO = (Clutchspeed - Speed) / Clutchspeed
+#if(CO >= 0.9) {CO = 0.9}
+
+#if(Speed < 2) {CO = 0.8}
+#if(Speed > 2) {CO = 0}
+#------------------------------------------------------------------------------
+
+
+
+
+#Low speed steering control (Turns on Dual clutch turning)
+#------------------------------------------------------------------------------
+if(Speed < LatchSpeed){
+    if(DualClutchTurning&!WS){
+            DCT = 1
+        }else{
+            DCT = 0
+        }
+
+
+}
+else{
+    DCT = 0
+    LL = 0+!Active
+    LR = 0+!Active
+}
+
+if(!DCT&Speed<LatchSpeed2)
+{
+    if(A) {LL = 1*Latchm} else{LL = 0+!Active}
+    if(D) {LR = 1*Latchm} else{LR = 0+!Active}
+}
+
+
+
+
+if(!WS)
+{
+    if(A)
+    {
+        LL = 1*Latchm
+        LR = 0
+    }
+    
+    if(D)
+    {
+        LL = 0
+        LR = 1*Latchm
+    }
+}
+#------------------------------------------------------------------------------
+
+
+#Track Lock
+#------------------------------------------------------------------------------
+#makes sure shit goes straight
+if(A|D){
+      TrackLock = 0
+  }else{
+      TrackLock = 1
+}
+#------------------------------------------------------------------------------
+
+    
+
+
+#Automatic Gearbox (Kyle made this) It isn't perfect but it works.
+#===========================================================================================================
+#Resets
+    Shifted = 0
+    
+    Turning = A+D
+    SW = W+S
+    
+
+if(GearHold)
+{
+    Cooldown = 9999
+    
+}else{
+Cooldown = GearCooldown - OffCooldown
+}
+
+if(!SW)
+{
+    OffCooldown = OffThrottleCD
+}else{
+
+    OffCooldown = 0
+
+}
+
+#Gear Mechanics
+    #Idle
+        if(!Active){
+            R = 0
+            Gear = 0
+        }
+        
+    #Reverse
+        R = S
+
+
+    
+        if(R&Active&!GearHold) {
+            
+        #Reverse Gear Up
+            if(!CD & (RPM>MaxRPM)){
+                if(!Turning){
+                    GearTB2 = clamp(GearA2+1,1,ReverseGears:count())
+                }
+            }
+            
+        #Reverse Gear Down
+            if(!CD & (RPM<MinRPM)){
+                GearTB2 = clamp(GearA2-1,1,ReverseGears:count())
+            }            
+            
+        
+        #[#Reverse Turning RPM Adjuster
+            if(TRPMAd & Turning & (RPM<TurnRPM)){
+                GearTB2 = clamp(GearA2-1,1,ReverseGears:count())
+            }
+            ]#
+            
+        #Reverse Shifting
+            if(GearA2!=GearTB2){
+                #Exceptions
+                    if(!CD){
+                            Shifted = 1
+                            GearA2 = GearTB2
+                        }
+                }
+                
+        #Reverse Gear Change Cooldown
+            if(Shifted|CD){
+                CD = 1
+                CDTimer++
+            if(CDTimer>Cooldown){
+                    CDTimer = 0
+                    CD = 0
+                }
+            }
+        
+    
+        #Reverse Final Gear Assignment
+        Gear = ReverseGears[GearA2,number]
+    
+        }
+            
+    
+    #Forwards
+        if(!R&Active&!GearHold){
+
+        #Gear Up
+            if(!CD & (RPM>MaxRPM)){
+                if(!Turning){
+                    GearTB = clamp(GearA+1,1,Gears:count())
+                }
+            }
+            
+        #Gear Down
+            if(!CD & (RPM<MinRPM)){
+                GearTB = clamp(GearA-1,1,Gears:count())
+            }            
+            
+        #[#Turning RPM Adjuster
+            if(TRPMAd & Turning & (RPM<TurnRPM)){
+                GearTB = clamp(GearA-1,1,Gears:count())
+            }
+            ]#
+            
+        #Shifting
+            if(GearA!=GearTB){
+                #Exceptions
+                    if(!CD){
+                            Shifted = 1
+                            GearA = GearTB
+                        }
+                }
+                
+        #Gear Change Cooldown
+            if(Shifted|CD){
+                CD = 1
+                CDTimer++
+            if(CDTimer>Cooldown){
+                    CDTimer = 0
+                    CD = 0
+                }
+            }
+        
+    
+        #Final Gear Assignment
+        Gear = Gears[GearA,number]
+    }
+#===========================================================================================================
+
+#Dual Track Control Section
+#------------------------------------------------------------------------------
+    if(DCT){
+            if(A){
+                LL = 0
+                LR = 0
+                BrakeL = 0
+                BrakeR = 0
+                ClutchR = CO
+                ClutchL = CO
+                GearR = TurningGears[1,number]
+                GearL = TurningGears[2,number]
+            }              
+            if(D){
+                LL = 0
+                LR = 0
+                BrakeL = 0
+                BrakeR = 0
+                ClutchR = CO
+                ClutchL = CO
+                GearR = TurningGears[2,number]
+                GearL = TurningGears[1,number]
+            }      
+                #Arbitrary Turning throttle limiters
+
+        
+    }else{
+        GearL = Gear
+        GearR = Gear
+    }
+
+
+#------------------------------------------------------------------------------
+
+
+
+    #EMERGENCY WAR POWER
+#------------------------------------------------------------------------------
+if(WEPEnabled){
+    
+    if(WEP & ~WEP) {
+        WEPAct = !WEPAct
+    
+        #printing shit
+        if(WEPAct){
+            Wirepod:printDriver("Emergency War Power Activated, Fuel Remaining:")
+            Wirepod:printDriver(toString(TotalFuelIn))
+        }else{
+            Wirepod:printDriver("Emergency War Power Deactivated, Fuel Remaining:")
+            Wirepod:printDriver(toString(TotalFuelIn))
+        }
+        
+    }
+    
+    
+    if(WEPAct){
+        FUELACTIVE = 1
+    }else{
+        FUELACTIVE = 0
+    }
+}
+#------------------------------------------------------------------------------
+
+
+
+    #TRACK SOUNDS
+#------------------------------------------------------------------------------
+
+
+
+#------------------------------------------------------------------------------
+
+#Arbitrary Turning RPM throttle limiters
+
+
+
+
+Speed = Base:vel():length() / 17.6
